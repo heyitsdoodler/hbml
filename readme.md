@@ -34,9 +34,14 @@ The syntax for defining an element is similar to how you would write a CSS selec
 
 5. Inside the braces child elements may be added, text nodes may be added ("Hello, World!"), and multiline comments may be added (/* comment */).
 
-Example empty section element with id of "wrapper"
+Example empty section element with an id of "wrapper"
 ```hbml
-section.wrapper
+section#wrapper
+```
+
+Example empty div element with a class of "holder"
+```hbml
+div.holder
 ```
 
 Example p element with inline style
