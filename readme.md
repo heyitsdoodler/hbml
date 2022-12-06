@@ -32,7 +32,9 @@ The syntax for defining an element is similar to how you would write a CSS selec
 
 4. After the element a pair of braces {} can be added to define the contents of the element, these are not required if the element is empty or is void.
 
-5. Inside the braces child elements may be added, text nodes may be added ("Hello, World!"), and multiline comments may be added (/* comment */).
+5. Inside the braces child elements may be added, text nodes* may be added ("Hello, World!"), and multiline comments may be added (/* comment */).
+
+*Text nodes can be defined with "double quotes", 'single quotes', or \`back ticks\`
 
 Example empty section element with an id of "wrapper"
 ```hbml
@@ -49,11 +51,24 @@ Example p element with inline style
 p[style="color: red;"] {"Hello, World!"}
 ```
 
+Example h1 element using single child syntax followed by multi child syntax
+```hbml
+h1 > "Single child syntax only allows one text node or child element"
+
+h1 {
+   "With multi child syntax you "
+   "can have multiple text nodes concatenated"
+}
+```
 Example implicit div element with multiple classes
 ```hbml
 .class-one.class-two.class-three {
     "Text inside an implicit div"
 }
+```
+Example of implicit div nesting using single child syntax
+```hbml
+.layer-1 > .layer-2 > .layer-3
 ```
 
 ## HTML vs HBML examples
@@ -87,7 +102,7 @@ span {
     {"This part is automatically a span because of the parent"}
 }
 ```
-### Whole page
+### Basic page example
 HTML
 ```html
 <!doctype html>
@@ -104,11 +119,6 @@ HTML
     </head>
     <body>
         <h1>Heading 1</h1>
-        <h2>Heading 2</h2>
-        <h3>Heading 3</h3>
-        <h4>Heading 4</h4>
-        <h5>Heading 5</h5>
-        <h6>Heading 6</h6>
         <div>
             <p>A paragraph inside a div</p>
         </div>
@@ -131,17 +141,121 @@ HBML
     }
     body {
         h1 { "Heading 1" }
-        h2 { "Heading 2" }
-        h3 { "Heading 3" }
-        h4 { "Heading 4" }
-        h5 { "Heading 5" }
-        h6 { "Heading 6" }
 
         div {
             p { "A paragraph inside a div" }
         }
 
         a[href="./"] { "Clickable link" }
+    }
+}
+```
+### More complex example
+HTML
+```html
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Title of webpage</title>
+        <style>
+            body {
+                font-family: 'Roboto', sans-serif;
+            }
+
+            .highlight {
+                background-color: yellow;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Various headings -->
+        <section>
+            <h1>Heading 1</h1>
+            <h2>Heading 2</h2>
+            <h3>Heading 3</h3>
+            <h4>Heading 4</h4>
+            <h5>Heading 5</h5>
+            <h6>Heading 6</h6>
+        </section>
+        <!-- Divs and classes with multiple children -->
+        <div>
+            <p>A paragraph inside a div</p>
+            <p>This also works for a single piece of text</p>
+        </div>
+        <div class="layer-1">
+            <div class="layer-2">
+                <div class="layer-3">Text directly inside the .layer-3 div<br/>
+                <div>Some text inside an implicit div</div>
+                <div>Other text inside an explicit div</div>
+                <br/>Text inside the .layer-3 div after the child elements</div>
+            </div>
+        </div>
+        <!-- Combination of inlining and multiple children -->
+        <p>Text with a highlighted part <span class="highlight">right here</span> followed by more text</p>
+        <!-- Testing different strings -->
+        <div>Double quote string<br/>Single quote string<br/>Back tick string</div>
+    </body>
+</html>
+```
+HBML
+```hbml
+:root {
+    head {
+        meta[charset="UTF-8"]
+        meta[name="viewport" content="width=device-width, initial-scale=1"]
+        title > "Title of webpage"
+        style > "
+            body {
+                font-family: 'Roboto', sans-serif;
+            }
+
+            .highlight {
+                background-color: yellow;
+            }
+        "
+    }
+    body {
+
+        /* Various headings */
+
+        section {
+            h1 > "Heading 1"
+            h2 > "Heading 2"
+            h3 > "Heading 3"
+            h4 > "Heading 4"
+            h5 > "Heading 5"
+            h6 > "Heading 6"
+        }
+
+
+        /* Divs and classes with multiple children */
+
+        div {
+            p { "A paragraph inside a div" }
+            p > "This also works for a single piece of text"
+        }
+
+        .layer-1 > .layer-2 > .layer-3 {
+            "Text directly inside the .layer-3 div"
+
+            br
+            > "Some text inside an implicit div"
+            div > "Other text inside an explicit div"
+            br
+
+            "Text inside the .layer-3 div after the child elements"
+        }
+
+        /* Combination of inlining and multiple children */
+
+        p {"Text with a highlighted part " span.highlight>"right here" " followed by more text"}
+
+        /* Testing different strings */
+        div {
+            "Double quote string" br 'Single quote string' br `Back tick string`
+        }
     }
 }
 ```

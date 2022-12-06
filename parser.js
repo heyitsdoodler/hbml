@@ -1,3 +1,6 @@
+// Attributes need to be properly parsed and support any character in their strings
+
+
 /*
 This is a toy parser for converting HBML to HTML
 
@@ -79,6 +82,8 @@ const INLINE_ELEMENTS = [
     "wbr"
 ]
 
+const validQuotes = /["'`]/
+
 /*
 Used as a root element that everything is wrapped in
  */
@@ -107,7 +112,7 @@ const convertReservedChar = (string) => {
         //"\"": "&quot;", // Caused problems with style tag
 
         "&": "&amp;", // Has to be done first, for reasons
-        "'":"&apos;",
+        // "'":"&apos;",
         "<": "&lt;",
         ">": "&gt;",
     }
@@ -141,7 +146,7 @@ const parseComment = (iter) => {
 }
 
 // Parse double quote string
-const parseStr = (iter) => {
+const parseStr = (iter, char = "\"") => {
     let outputStr = ""
 
     let escape = false
@@ -151,8 +156,9 @@ const parseStr = (iter) => {
         const next = iter.next()
 
         if (next === "\\" && !escape) escape = true
-        else if (next === "\"" && !escape) done = true
+        else if (next === char && !escape) done = true
         else {
+            if (escape && next !== char) outputStr += "\\"
             escape = false
             outputStr += next//.replace("\"", "quot;")
         }
@@ -170,7 +176,8 @@ const parseSelector = (selector, inline = false) => {
     let htmlTag = ""
     let ids = []
     let classes = []
-    let attributes = ""
+
+    let attributes = {}
 
     let pieces = []
     let index = 0
@@ -206,7 +213,31 @@ const parseSelector = (selector, inline = false) => {
                     classes.push(piece.slice(1))
                     break
                 case "[":
-                    attributes = piece.slice(1, -1)
+                    const attrIter = createIterString(piece.slice(1, -1))
+                    attributes = {}
+
+                    let attribute = ""
+
+                    const addAttribute = () => {
+                        if (attribute.length) {
+                            if (attrIter.peek()?.match(validQuotes)) {
+                                const char = attrIter.next()
+                                attributes[attribute] = parseStr(attrIter, char).replaceAll("\"", "&quot;")
+                            } else {
+                                attributes[attribute] = true
+                            }
+                            attribute = ""
+                        }
+                    }
+
+                    while (attrIter.hasNext()) {
+                        const next = attrIter.next()
+
+                        if (next.match(/[\s=]/)) addAttribute()
+                        else attribute += next
+                    }
+                    addAttribute()
+
                     break
                 default:
                     htmlTag = piece
@@ -219,7 +250,8 @@ const parseSelector = (selector, inline = false) => {
 
     return {
         tag: htmlTag.trim() ? htmlTag.trim() : (!inline ? "div" : "span"),
-        attributes: convertReservedChar(`${joinedIds.length ? `id="${joinedIds}" ` : ""}${joinedClasses.length ? `class="${joinedClasses}" ` : ""}${attributes}`.trim())
+        attributes: convertReservedChar(`${joinedIds.length ? `id="${joinedIds}" ` : ""}${joinedClasses.length ? `class="${joinedClasses}" ` : ""}${Object.entries(attributes).map(d => `${d[0]}${d[1] !== true ?`="${d[1]}"` : ""}`).join(" ")}`
+            .trim())
     }
 }
 
@@ -227,7 +259,7 @@ const parseSelector = (selector, inline = false) => {
 const parseElChild = (iter, parentTag = "") => {
     const next = iter.next()
 
-    if (next === "\"") return parseStr(iter)
+    if (next.match(validQuotes)) return parseStr(iter, next)
     else if (next === "/" && iter.peek() === "*") {
         iter.next()
         return parseComment(iter)
@@ -247,7 +279,6 @@ const parseEl = (iter, parentTag = "") => {
     let mode = 0
 
     let multiline = false
-
     let inSquares = false
 
     while (iter.hasNext() && mode <= 1) {
@@ -255,47 +286,55 @@ const parseEl = (iter, parentTag = "") => {
 
         switch (mode) {
             case 0:
-
-
-                /*if (next === ":" && unparsedSelector.length > 0) mode = 1
-                else */
-            if (next === "{") {
-                mode = 1
-                multiline = true
-            }
-            else if (next === "\n") {
-                mode = 2
-            }
-            else if (next.match(/[\s}]/) && !inSquares) {
-                if (iter.peek() !== "{") mode = 2
-            }
-
-            else {
-                if (next === "[") inSquares = true
-                else if (next === "]") inSquares = false
-                unparsedSelector += next
-            }
+                if (next === ">") mode = 1
+                else if (next === "{") {
+                    mode = 1
+                    multiline = true
+                }
+                else if (next === "\n" && !inSquares) {
+                    mode = 2
+                }
+                else if (next.match(validQuotes) && !inSquares) {
+                    iter.back()
+                    mode = 2
+                }
+                else if (next.match(/[\s}]/) && !inSquares) {
+                    if (iter.peek() !== "{" && iter.peek() !== ">") mode = 2
+                }
+                else {
+                    if (next === "[") inSquares = true
+                    else if (next === "]") inSquares = false
+                    unparsedSelector += next
+                }
                 break
             case 1:
                 const {tag} = parseSelector(unparsedSelector, INLINE_ELEMENTS.includes(parentTag.toLowerCase()))
 
-                // if (VOID_ELEMENTS.includes(tag.toLowerCase())) mode = 2 // Don't parse children of void element
-                if (next === "}" && multiline) mode = 2
+                if ((childrenOutputs.length > 0 || next === "\n") && !multiline) {
+                    iter.back() // So the parent can capture the space again
+                    mode = 2
+                }
+                else if (next === "}" && multiline) {
+                    mode = 2
+                }
                 else if (!next.match(/\s/)) {
+                    // Void elements are not allowed to have children
                     if (!VOID_ELEMENTS.includes(tag.toLowerCase())) {
                         iter.back()
-                        childrenOutputs[childrenOutputs.length] = parseElChild(iter, tag)
+                        if (multiline) {
+                            childrenOutputs[childrenOutputs.length] = parseElChild(iter, tag)
+                        } else {
+                            childrenOutputs = [parseElChild(iter, tag)]
+                        }
                     }
                     else childrenOutputs = [`<!-- Void element ${tag} may not have child nodes -->`]
-
                 }
+
                 break
         }
     }
 
-
     const {tag, attributes} = parseSelector(unparsedSelector, INLINE_ELEMENTS.includes(parentTag.toLowerCase()))
-
 
     // Add closing tag for non-void elements
     const closingTag = !VOID_ELEMENTS.includes(tag.toLowerCase())
@@ -307,7 +346,7 @@ const parseEl = (iter, parentTag = "") => {
 
 export const parseHBML = (hbml) => {
     // The input is wrapped in the "TRUE_ROOT" you can have multiple top level components, such as comments
-    const parsed = `${parseElChild(createIterString(`${TRUE_ROOT}{${hbml.trim()}}`))}`
+    const parsed = `${parseEl(createIterString(`${TRUE_ROOT}{${hbml.trim()}}`))}`
 
     // The "TRUE_ROOT" is stripped out of the final HTML output
     return parsed.substring(TRUE_ROOT.length+2, parsed.length-(TRUE_ROOT.length+3))
