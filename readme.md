@@ -28,7 +28,7 @@ The syntax for defining an element is similar to how you would write a CSS selec
 3. Attributes can be added inside square brackets [] appended to the element name.
 
     - The last set of attributes appended to an element will be the only one that takes effect.
-    - This behaviour allows removing or overwriting the language property of ':root', ':root[]' to remove, ':root[lang="en_CA"]' to overwrite.
+    - This behaviour allows removing or overwriting the language property of ':root', ':root[]' to remove, ':root[lang="fr"]' to overwrite.
 
 4. After the element a pair of braces {} can be added to define the contents of the element, these are not required if the element is empty or is void.
 
