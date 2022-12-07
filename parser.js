@@ -1,6 +1,3 @@
-// Attributes need to be properly parsed and support any character in their strings
-
-
 /*
 This is a toy parser for converting HBML to HTML
 
@@ -146,7 +143,7 @@ const parseComment = (iter) => {
 }
 
 // Parse double quote string
-const parseStr = (iter, char = "\"") => {
+const parseStr = (iter, char = "\"", convert = true) => {
     let outputStr = ""
 
     let escape = false
@@ -164,7 +161,9 @@ const parseStr = (iter, char = "\"") => {
         }
     }
 
-    return convertReservedChar(outputStr)
+    if (char !== "`") outputStr = outputStr.replaceAll("\n", "")
+
+    return convert ? convertReservedChar(outputStr) : outputStr
 }
 
 // Parse out the tagName, classes, ids, and attributes from an HBML element
@@ -218,13 +217,20 @@ const parseSelector = (selector, inline = false) => {
 
                     let attribute = ""
 
-                    const addAttribute = () => {
+                    const addAttribute = (next) => {
                         if (attribute.length) {
-                            if (attrIter.peek()?.match(validQuotes)) {
-                                const char = attrIter.next()
-                                attributes[attribute] = parseStr(attrIter, char).replaceAll("\"", "&quot;")
-                            } else {
+                            const peek = attrIter.peek()
+
+                            if (!next || next.match(/\s/)) {
                                 attributes[attribute] = true
+                            }
+                            else if (next === "=") {
+                                if (peek?.match(validQuotes)) {
+                                    const char = attrIter.next()
+                                    attributes[attribute] = parseStr(attrIter, char, false)
+                                } else {
+                                    attributes[attribute] = parseStr(attrIter, " ", false)
+                                }
                             }
                             attribute = ""
                         }
@@ -233,7 +239,7 @@ const parseSelector = (selector, inline = false) => {
                     while (attrIter.hasNext()) {
                         const next = attrIter.next()
 
-                        if (next.match(/[\s=]/)) addAttribute()
+                        if (next.match(/[\s=]/)) addAttribute(next)
                         else attribute += next
                     }
                     addAttribute()
@@ -250,7 +256,7 @@ const parseSelector = (selector, inline = false) => {
 
     return {
         tag: htmlTag.trim() ? htmlTag.trim() : (!inline ? "div" : "span"),
-        attributes: convertReservedChar(`${joinedIds.length ? `id="${joinedIds}" ` : ""}${joinedClasses.length ? `class="${joinedClasses}" ` : ""}${Object.entries(attributes).map(d => `${d[0]}${d[1] !== true ?`="${d[1]}"` : ""}`).join(" ")}`
+        attributes: (`${joinedIds.length ? `id="${joinedIds}" ` : ""}${joinedClasses.length ? `class="${joinedClasses}" ` : ""}${Object.entries(attributes).map(d => `${d[0]}${d[1] !== true ?`="${d[1].replaceAll("\"", "&quot;")}"` : ""}`).join(" ")}`
             .trim())
     }
 }
@@ -286,7 +292,7 @@ const parseEl = (iter, parentTag = "") => {
 
         switch (mode) {
             case 0:
-                if (next === ">") mode = 1
+                if (next === ">" && !inSquares) mode = 1
                 else if (next === "{") {
                     mode = 1
                     multiline = true
