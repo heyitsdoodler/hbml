@@ -84,7 +84,7 @@ ${chalk.bold(chalk.underline('Options:'))}
  */
 function build_internal(paths, output, allow) {
 	console.log("Building HTML files...")
-	const start = new Date()
+	let file_num = 0
 	console.time("hbml_build")
 	let filtered = []
 	const cwd = process.cwd();
@@ -113,6 +113,7 @@ function build_internal(paths, output, allow) {
 			break
 		}
 		if (path.type === "file") {
+			file_num += 1
 			parse_file(path, allow)
 		} else {
 			fs.readdirSync(path.read).forEach((subpath) => {
@@ -125,8 +126,7 @@ function build_internal(paths, output, allow) {
 			})
 		}
 	}
-	const end = new Date()
-	console.log(`Finished building HTML files in ${(start - end)/1_000_000}ms`)
+	console.log(`Finished building ${file_num} HBML files`)
 }
 
 /**

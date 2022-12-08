@@ -2,9 +2,11 @@
 
 This is a Javascript module that contains a toy parser I made for fun.
 
-I wasn't intending on putting this on GitHub since it's definitely not efficient or well written, but some people were curious and so no harm no foul.
+I wasn't intending on putting this on GitHub since it's definitely not efficient or well written, but some people were
+curious and so no harm no foul.
 
-But just keep in mind that this is very much a toy, and invalid syntax will just cause the parser to spit out broken HTML.
+But just keep in mind that this is very much a toy, and invalid syntax will just cause the parser to spit out broken
+HTML.
 
 [Try version of parser on my website](https://aydenh.ca/hbml/)
 
@@ -14,7 +16,7 @@ Make HTML a little more concise and use syntax that is more similar to CSS and J
 
 ## Syntax
 
-The root element of every HBML document is ':root' which becomes 'html[lang="en"]' when converted to html
+The root element of every HBML document is `:root` which becomes `html[lang="en"]` when converted to html
 
 The syntax for defining an element is similar to how you would write a CSS selector.
 
@@ -28,30 +30,37 @@ The syntax for defining an element is similar to how you would write a CSS selec
 3. Attributes can be added inside square brackets [] appended to the element name.
 
     - The last set of attributes appended to an element will be the only one that takes effect.
-    - This behaviour allows removing or overwriting the language property of ':root', ':root[]' to remove, ':root[lang="fr"]' to overwrite.
+    - This behaviour allows removing or overwriting the language property of `:root`, `:root[]` to
+      remove, `:root[lang="fr"]` to overwrite.
 
-4. After the element a pair of braces {} can be added to define the contents of the element, these are not required if the element is empty or is void.
+4. After the element a pair of braces {} can be added to define the contents of the element, these are not required if
+   the element is empty or is void.
 
-5. Inside the braces child elements may be added, text nodes* may be added ("Hello, World!"), and multiline comments may be added (/* comment */).
+5. Inside the braces child elements may be added, text nodes* may be added ("Hello, World!"), and multiline comments may
+   be added (/* comment */).
 
 *Text nodes can be defined with "double quotes", 'single quotes', or \`back ticks\`
 
 Example empty section element with an id of "wrapper"
+
 ```hbml
 section#wrapper
 ```
 
 Example empty div element with a class of "holder"
+
 ```hbml
 div.holder
 ```
 
 Example p element with inline style
+
 ```hbml
 p[style="color: red;"] {"Hello, World!"}
 ```
 
 Example h1 element using single child syntax followed by multi child syntax
+
 ```hbml
 h1 > "Single child syntax only allows one text node or child element"
 
@@ -60,33 +69,45 @@ h1 {
    "can have multiple text nodes concatenated"
 }
 ```
+
 Example implicit div element with multiple classes
+
 ```hbml
 .class-one.class-two.class-three {
     "Text inside an implicit div"
 }
 ```
+
 Example of implicit div nesting using single child syntax
+
 ```hbml
 .layer-1 > .layer-2 > .layer-3
 ```
 
 ## HTML vs HBML examples
+
 ### Classes, Ids, and Attributes
+
 HTML
+
 ```html
 <p id="myParagraph" class="paraClass1 paraClass2">Paragraph Text</p>
 <input type="text">
 ```
+
 HBML
+
 ```hbml
 p#myParagraph.paraClass1.paraClass2 {
     "Paragraph Text"
 }
 input[type="text"]
 ```
+
 ### Default divs and spans
+
 HTML
+
 ```html
 <!-- I made divs (or spans inside default inline elements) the default if nothing is specified -->
 <div>Some text</div>
@@ -94,7 +115,9 @@ HTML
     <span>This part is automatically a span because of the parent</span>
 </span>
 ```
+
 HBML
+
 ```hbml
 /* I made divs (or spans inside default inline elements) the default if nothing is specified */
 {"Some text"}
@@ -102,31 +125,36 @@ span {
     {"This part is automatically a span because of the parent"}
 }
 ```
+
 ### Basic page example
+
 HTML
+
 ```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Title of webpage</title>
-        <style>
-            body {
-                font-family: sans-serif;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Heading 1</h1>
-        <div>
-            <p>A paragraph inside a div</p>
-        </div>
-        <a href="./">Clickable link</a>
-    </body>
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Title of webpage</title>
+	<style>
+		body {
+			font-family: sans-serif;
+		}
+	</style>
+</head>
+<body>
+<h1>Heading 1</h1>
+<div>
+	<p>A paragraph inside a div</p>
+</div>
+<a href="./">Clickable link</a>
+</body>
 </html>
 ```
+
 HBML
+
 ```hbml
 :root {
     head {
@@ -150,56 +178,62 @@ HBML
     }
 }
 ```
+
 ### More complex example
+
 HTML
+
 ```html
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Title of webpage</title>
-        <style>
-            body {
-                font-family: 'Roboto', sans-serif;
-            }
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>Title of webpage</title>
+	<style>
+		body {
+			font-family: 'Roboto', sans-serif;
+		}
 
-            .highlight {
-                background-color: yellow;
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Various headings -->
-        <section>
-            <h1>Heading 1</h1>
-            <h2>Heading 2</h2>
-            <h3>Heading 3</h3>
-            <h4>Heading 4</h4>
-            <h5>Heading 5</h5>
-            <h6>Heading 6</h6>
-        </section>
-        <!-- Divs and classes with multiple children -->
-        <div>
-            <p>A paragraph inside a div</p>
-            <p>This also works for a single piece of text</p>
-        </div>
-        <div class="layer-1">
-            <div class="layer-2">
-                <div class="layer-3">Text directly inside the .layer-3 div<br/>
-                <div>Some text inside an implicit div</div>
-                <div>Other text inside an explicit div</div>
-                <br/>Text inside the .layer-3 div after the child elements</div>
-            </div>
-        </div>
-        <!-- Combination of inlining and multiple children -->
-        <p>Text with a highlighted part <span class="highlight">right here</span> followed by more text</p>
-        <!-- Testing different strings -->
-        <div>Double quote string<br/>Single quote string<br/>Back tick string</div>
-    </body>
+		.highlight {
+			background-color: yellow;
+		}
+	</style>
+</head>
+<body>
+<!-- Various headings -->
+<section>
+	<h1>Heading 1</h1>
+	<h2>Heading 2</h2>
+	<h3>Heading 3</h3>
+	<h4>Heading 4</h4>
+	<h5>Heading 5</h5>
+	<h6>Heading 6</h6>
+</section>
+<!-- Divs and classes with multiple children -->
+<div>
+	<p>A paragraph inside a div</p>
+	<p>This also works for a single piece of text</p>
+</div>
+<div class="layer-1">
+	<div class="layer-2">
+		<div class="layer-3">Text directly inside the .layer-3 div<br/>
+			<div>Some text inside an implicit div</div>
+			<div>Other text inside an explicit div</div>
+			<br/>Text inside the .layer-3 div after the child elements
+		</div>
+	</div>
+</div>
+<!-- Combination of inlining and multiple children -->
+<p>Text with a highlighted part <span class="highlight">right here</span> followed by more text</p>
+<!-- Testing different strings -->
+<div>Double quote string<br/>Single quote string<br/>Back tick string</div>
+</body>
 </html>
 ```
+
 HBML
+
 ```hbml
 :root {
     head {
