@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import fs from "fs"
 import npath from "path"
-import {parseHBML} from "../parser.js";
+import {fullStringify} from "../parser.js";
 
 /**
  * Build function runer
@@ -31,7 +31,7 @@ export const build_runner = (args) => {
 	delete args["o"]
 	let skip_arr = args["s"];
 	if (skip_arr === undefined) { skip_arr = [] }
-	let allow = { write: false, not_found: false }
+	let allow = { write: false, not_found: false, parse: false }
 	skip_arr.forEach((s) => {
 		switch (s) {
 			case "write":
@@ -40,11 +40,15 @@ export const build_runner = (args) => {
 			case "not_found":
 				allow.not_found = true
 				break
+			case "parse":
+				allow.parse = true
+				break
 			default:
 				console.log(chalk.red(`Unknown allow value ${s}! See 'hbml build -h' for help`))
 				process.exit(1)
 		}
 	})
+	delete args["s"]
 	// check no unexpected args were given
 	if (Object.keys(args).length !== 0) {
 		console.log(chalk.red(`Unexpected arguments ${Object.keys(args).join(", ")}! See 'hbml build -h' for help`))
@@ -70,7 +74,10 @@ ${chalk.bold(chalk.underline('Options:'))}
   -o
         Output directory for HTML files. Defaults to current working directory
   -a=<value>
-        Allow option for errors. Allowable values are 'write' and 'not_found' for allowing write errors and file not found errors
+        Allow option for errors. Allowable values are:
+        - 'write' for allowing write errors
+        - 'not_found' for allowing file not found errors
+        - 'parse' for allowing HBML parsing errors
   -h,--help
         Shows this message`);
 	process.exit()
@@ -113,7 +120,6 @@ const build_internal = (paths, output, allow) => {
 			break
 		}
 		if (path.type === "file") {
-			file_num++
 			parse_file(path, allow)
 		} else {
 			fs.readdirSync(path.read).forEach((subpath) => {
@@ -126,7 +132,7 @@ const build_internal = (paths, output, allow) => {
 			})
 		}
 	}
-	console.log(`Finished building ${file_num} HBML files`)
+	console.log(`Finished building HBML files`)
 }
 
 /**
@@ -137,8 +143,8 @@ const build_internal = (paths, output, allow) => {
  * @param allow {Object} Allow arguments
  */
 const parse_file = (path, allow) => {
-	fs.readFile(path.read, (err, data) => {
-		if (err) {
+	fs.readFile(path.read, (read_err, data) => {
+		if (read_err) {
 			if (allow.not_found) {
 				console.log(chalk.yellow(`Unable to read file ${path.read}! Skipping over file`))
 			} else {
@@ -148,12 +154,21 @@ const parse_file = (path, allow) => {
 			return
 		}
 		path.write = `${path.write.slice(0, path.write.length - 5)}.html`
-		const parsed = parseHBML(data.toString())
+		const {ok, err} = fullStringify(data.toString())
+		if (err) {
+			if (allow.parse) {
+				console.log(chalk.yellow(`Unable to parse file ${path.write}(${err.desc})! Skipping over file`))
+			} else {
+				console.log(chalk.red(`Unable to parse file ${path.write}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
+				process.exit(1)
+			}
+			return
+		}
 		if (!fs.existsSync(npath.dirname(path.write))) {
 			fs.mkdirSync(npath.dirname(path.write), {recursive: true})
 		}
 		fs.writeFile(
-			path.write, parsed,
+			path.write, ok,
 			(e) => {
 				if (e) {
 					if (allow.write) {
@@ -162,6 +177,7 @@ const parse_file = (path, allow) => {
 						console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
 						process.exit(1)
 					}
+					return
 				}
 			}
 		)

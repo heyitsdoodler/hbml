@@ -26,10 +26,11 @@ This takes in paths to directories or files and build the hbml files into html f
 
 The `-s` flag is for skipping errors. The available values for this are:
 
-| Value       | Description                                                 |
-|-------------|-------------------------------------------------------------|
-| `not_found` | Will skip over file not found errors with a warning         |
-| `write`     | Will skip over errors in writing output html with a warning |
+| Value       | Description                                                    |
+|-------------|----------------------------------------------------------------|
+| `not_found` | Will skip over file not found errors with a warning            |
+| `write`     | Will skip over errors in writing output html with a warning    |
+| `parse`     | Will skip over errors in parsing HBML into HTML with a warning |
 
 The final output of any file is `$PWD/<output prefix path>/<source file path>` if the given file is relative, otherwise it will write to `<source file path>/<source file name>.html`
 

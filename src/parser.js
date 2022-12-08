@@ -1,359 +1,395 @@
-/*
-This is a toy parser for converting HBML to HTML
-
-This is a bit of hot js garbage but whatever
+/**
+ * # HBML Parser
+ *
+ * Split into a {@link tokenise tokeniser} and {@link stringify de-tokeniser} to allow for parsing
  */
 
-/* Elements that are not allowed to have contents */
-const VOID_ELEMENTS = [
-    "area",
-    "base",
-    "br",
-    "col",
-    "embed",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "param",
-    "source",
-    "track",
-    "wbr"
-]
-/* Elements that cause their children to become spans instead of divs when no element is specified */
-const INLINE_ELEMENTS = [
-    "abbr",
-    "acronym",
-    "audio",
-    "b",
-    "bdi",
-    "bdo",
-    "big",
-    "br",
-    "button",
-    "canvas",
-    "cite",
-    "code",
-    "data",
-    "datalist",
-    "del",
-    "dfn",
-    "em",
-    "embed",
-    "i",
-    "iframe",
-    "img",
-    "input",
-    "ins",
-    "kbd",
-    "label",
-    "map",
-    "mark",
-    "meter",
-    "noscript",
-    "object",
-    "output",
-    "picture",
-    "progress",
-    "q",
-    "ruby",
-    "s",
-    "samp",
-    "script",
-    "select",
-    "slot",
-    "small",
-    "span",
-    "strong",
-    "sub",
-    "sup",
-    "svg",
-    "template",
-    "textarea",
-    "time",
-    "u",
-    "tt",
-    "var",
-    "video",
-    "wbr"
-]
+import {VOID_ELEMENTS, INLINE_ELEMENTS} from "./constants.js"
 
-const validQuotes = /["'`]/
-
-/*
-Used as a root element that everything is wrapped in
+/**
+ * Line number in the input string
+ * @type {number}
  */
-const TRUE_ROOT = "__hbml_true_root__"
+let line = 0
+/**
+ * Column number in the input string
+ * @type {number}
+ */
+let col = 0
 
-const createIterString = (string) => {
-    let index = 0
-
-    return {
-        hasNext: () => index < string.length,
-        next: () => {
-            return string[index++]
-        },
-        back: () => {
-            index--
-        },
-        peek: (num = 0) => {
-            return string[index + num]
-        }
-    }
-}
-
-// Convert reserved HTML characters to their corresponding entities
+/**
+ * Convert reserved HTML characters to their corresponding entities
+ * @param string {string} String to convert
+ */
 const convertReservedChar = (string) => {
-    const reserved = {
-        //"\"": "&quot;", // Caused problems with style tag
+	const reserved = {
+		"&": "&amp;", // Has to be done first, otherwise it'll match the '&' in replaced text
+		"<": "&lt;",
+		">": "&gt;",
+	}
+	for (const property in reserved)
+		string = string.replaceAll(property, reserved[property])
 
-        "&": "&amp;", // Has to be done first, for reasons
-        // "'":"&apos;",
-        "<": "&lt;",
-        ">": "&gt;",
-    }
-
-
-    for (const property in reserved)
-        string = string.replaceAll(property, reserved[property])
-
-    return string
+	return string
 }
 
-// Parse multiline comment
-const parseComment = (iter) => {
-    let outputComment = ""
+/**
+ * Parse multiline comment
+ * @param src {String} String to take comment from
+ * @return {{ok: (Object | null), err: (String | null), rem: String}}
+ */
+const parseComment = (src) => {
+	let out = ""
+	let index = 0
 
-    let done = false
+	while (true) {
+		if (index === src.length) {
+			return {ok: null, err: "Expected end of comment! Found EOF", rem: ""}
+		}
+		const next = src[index]
 
-    while (iter.hasNext() && !done) {
-        const next = iter.next()
+		index++
+		col++
+		if (next === "*" && src[index] === "/") {
+			index++
+			break
+		} else if (next === "\n") {
+			out += next
+			col = 0
+			line++
+		} else {
+			out += next
+		}
+	}
 
-        if (next === "*" && iter.peek() === "/") {
-            done = true
-            iter.next()
-        }
-        else {
-            outputComment += next
-        }
-    }
-
-    return `<!-- ${outputComment.trim()} -->`
+	return {ok: {type: "comment", value: out}, err: null, rem: src.slice(index, src.length)}
 }
 
-// Parse double quote string
-const parseStr = (iter, char = "\"", convert = true) => {
-    let outputStr = ""
+/**
+ * Parse double quote string
+ * Modified from original
+ * @param str {string} String to parse string literal from
+ * @param char {string} Opening string character to match
+ * @param convert {boolean} Convert string via {@link convertReservedChar}
+ * @return {{ok: (Object | number), err: (String | null), rem: String}}
+ */
+const parseStr = (str, char = "\"", convert = true) => {
+	let index = 1
+	col++
+	const remaining = () => index < str.length
+	const next = () => str[index]
+	let out = ""
 
-    let escape = false
-    let done = false
+	let escape = false
 
-    while (iter.hasNext() && !done) {
-        const next = iter.next()
+	while (remaining()) {
+		if (next() === "\\" && !escape) escape = true
+		else if (next() === char && !escape) break
+		else if (next() === "\n") {
+			index++
+			col = 0
+			line++
+			if (char === "`") out += "\n"
+		}
+		else {
+			if (escape && next() !== char) {
+				out += "\\"
+				escape = false
+			}
+			out += next()
+		}
+		index++
+		col++
+	}
+	index++
+	col++
 
-        if (next === "\\" && !escape) escape = true
-        else if (next === char && !escape) done = true
-        else {
-            if (escape && next !== char) outputStr += "\\"
-            escape = false
-            outputStr += next//.replace("\"", "quot;")
-        }
-    }
-
-    if (char !== "`") outputStr = outputStr.replaceAll("\n", "")
-
-    return convert ? convertReservedChar(outputStr) : outputStr
+	return {
+		ok: {type: "string_literal", value: convert ? convertReservedChar(out) : out},
+		err: null,
+		rem: str.slice(index, str.length)
+	}
 }
 
-// Parse out the tagName, classes, ids, and attributes from an HBML element
-const parseSelector = (selector, inline = false) => {
-    // I thought it would be weird to use "html" in hbml. I use ":root" instead
-    // It defaults :root to become html with an en lang tag but this can be overwritten with :root[lang="something else"]
-    const iter = createIterString(selector.trim().replace(/^:root/, "html[lang=\"en\"]"))
+/**
+ * ### Tokeniser wrapper
+ *
+ * Wrapper for the main tokeniser. Adds the doctype tag and not much else really
+ * @param src {string} String to tokenise
+ * @return {{ok: Object[], err: (Object | null)}}} (Ok: ``array of tokens, Err: Error description and position)
+ */
+export const tokenise = (src) => {
+	let out = [{type: "doctype"}]
 
-    let htmlTag = ""
-    let ids = []
-    let classes = []
+	const {ok, err, rem} = tokenise_inner(src, "div")
+	if (err) {
+		return {ok: [], err: {desc: err, ln: line, col: col}}
+	}
+	// // check that the whole string was used
+	// if (rem.length !== 0) {
+	// 	return {ok: [], err: {desc: "Unexpected tokens!. Expected EOF", ln: line, col: col}}
+	// }
 
-    let attributes = {}
+	// check that a ':root' or 'html' tag is the first, and make sure it has a 'lang' attribute
+	if (ok[0] !== undefined) {
+		if (ok[0].type !== ":root" && ok[0].type !== "html") {
+			return {ok: [], err: {desc: `Expected a root element! Found '${ok[0].type}' element!`, ln: 0, col: 0}}
+		}
+		if (!/[^lang *= *"^""]/i.test(ok[0].attrs)) {
+			ok[0].attrs += ok[0].attrs ? ` lang="en"` : `lang="en"`
+		}
+	}
 
-    let pieces = []
-    let index = 0
+	ok.forEach((tok) => {
+		out.push(tok)
+	})
 
-    let insideAttributes = false
-
-    while (iter.hasNext()) {
-        const next = iter.next()
-
-        if (insideAttributes) {
-            if (next === "]")  {
-                insideAttributes = false
-            }
-        } else if (next.match(/[#.\[]/)) {
-            index++
-            if (next === "[")  {
-                insideAttributes = true
-            }
-        }
-
-        if (!pieces[index]) pieces[index] = ""
-
-        pieces[index] += next
-    }
-
-    pieces.forEach(piece => {
-        if (piece.length > 0)
-            switch (piece[0]) {
-                case "#":
-                    ids.push(piece.slice(1))
-                    break
-                case ".":
-                    classes.push(piece.slice(1))
-                    break
-                case "[":
-                    const attrIter = createIterString(piece.slice(1, -1))
-                    attributes = {}
-
-                    let attribute = ""
-
-                    const addAttribute = (next) => {
-                        if (attribute.length) {
-                            const peek = attrIter.peek()
-
-                            if (!next || next.match(/\s/)) {
-                                attributes[attribute] = true
-                            }
-                            else if (next === "=") {
-                                if (peek?.match(validQuotes)) {
-                                    const char = attrIter.next()
-                                    attributes[attribute] = parseStr(attrIter, char, false)
-                                } else {
-                                    attributes[attribute] = parseStr(attrIter, " ", false)
-                                }
-                            }
-                            attribute = ""
-                        }
-                    }
-
-                    while (attrIter.hasNext()) {
-                        const next = attrIter.next()
-
-                        if (next.match(/[\s=]/)) addAttribute(next)
-                        else attribute += next
-                    }
-                    addAttribute()
-
-                    break
-                default:
-                    htmlTag = piece
-                    break
-            }
-    })
-
-    const joinedIds = Array.from(new Set(ids)).join(" ").trim()
-    const joinedClasses = Array.from(new Set(classes)).join(" ").trim()
-
-    return {
-        tag: htmlTag.trim() ? htmlTag.trim() : (!inline ? "div" : "span"),
-        attributes: (`${joinedIds.length ? `id="${joinedIds}" ` : ""}${joinedClasses.length ? `class="${joinedClasses}" ` : ""}${Object.entries(attributes).map(d => `${d[0]}${d[1] !== true ?`="${d[1].replaceAll("\"", "&quot;")}"` : ""}`).join(" ")}`
-            .trim())
-    }
+	return {ok: out, err: null}
 }
 
-// Parse the next child of an element, whether it be string, comment, or another element
-const parseElChild = (iter, parentTag = "") => {
-    const next = iter.next()
+/**
+ * ### Tokenises an input string
+ *
+ * This works by parsing the start of the tag, then parsing the inner section recursively, then checking for an ending tag
+ *
+ * The tag objects all have a type which is their HTML tag. If the type is `close`, that  represents a closing tag; if
+ * the tag is `doctype` that represents the `<!DOCTYPE html>` at the start of the HTML file. All other can have an
+ * `id`, `class`, and `attrs` value which are sef explanatory. Each of these are strings.
+ *
+ * If an error is found, the error object will contain a `ln` and `col` value for the line and column where the error was found
+ * @param src {string} String to tokenise
+ * @param default_tag {string} Default tag to use when no other is given
+ * @param str_replace {boolean} Pass any string through the {@link convertReservedChar} function
+ * @return {{ok: Object[], err: (String | null), rem: String}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
+ */
+const tokenise_inner = (src, default_tag, str_replace = true) => {
+	let index = 0;
+	const remaining = () => src.length > index
+	const next = () => src[index]
 
-    if (next.match(validQuotes)) return parseStr(iter, next)
-    else if (next === "/" && iter.peek() === "*") {
-        iter.next()
-        return parseComment(iter)
-    }
-    // else if (next === "@") return parseImport()
-    else {
-        iter.back()
-        return parseEl(iter, parentTag)
-    }
+	let out = []
+
+	// move over "blank" characters
+	while (remaining()) {
+		if (next() === " " || next() === "\t") {
+			col++
+			index++
+		} else if (next() === "\n") {
+			col = 0
+			index++
+			line++
+		} else {
+			break
+		}
+	}
+	if (!remaining()) {
+		return {ok: [], err: null, rem: ""}
+	}
+	// check for string
+	if ("\"'`".includes(next())) {
+		let res = parseStr(src.slice(index, src.length), next(), str_replace)
+		if (res.err) {
+			return {ok: [], err: res.err, rem: ""}
+		}
+		return {ok: [res.ok], err: null, rem: res.rem}
+	}
+	// check for comment
+	if (next() === "/") {
+		let res = parseComment(src.slice(index, src.length))
+		if (res.err) {
+			return {ok: [], err: res.err, rem: ""}
+		}
+		return {ok: [res.ok], err: null, rem: res.rem}
+	}
+	// check for tag name
+	let type;
+	if (!">#.".includes(next())) {
+		type = ""
+		while (remaining() && !"#. \t\n\"'`/>{[".includes(next())) {
+			type += next()
+			index++
+			col++
+		}
+	} else {
+		type = default_tag
+	}
+	if (!remaining()) {
+		return {ok: [{type: type, id: "", class: "", attrs: ""}, {type: "close"}], err: null, rem: ""}
+	}
+	// check for id
+	let id = "";
+	if (next() === "#") {
+		index++
+		col++
+		while (remaining() && !">{. \t\n".includes(next())) {
+			id += next()
+			index++
+			col++
+		}
+	}
+	if (!remaining()) {
+		return {ok: [{type: type, id: id, class: "", attrs: ""}, {type: "close"}], err: null, rem: ""}
+	}
+	// check for classes
+	let class_ = "";
+	if (next() === ".") {
+		while (remaining() && !">{ \t\n".includes(next())) {
+			id += next()
+			index++
+			col++
+		}
+		class_ = class_.replaceAll(".", " ").slice(1, class_.length)
+	}
+	if (!remaining()) {
+		return {ok: [{type: type, id: id, class: class_, attrs: ""}, {type: "close"}], err: null, rem: ""}
+	}
+	// check for attributes
+	// we cheat a bit here and treat everything in the brackets as valid HTML attributes
+	let attrs = "";
+	if (next() === "[") {
+		index++
+		col++
+		while (remaining() && next() !== "]") {
+			switch (next()) {
+				case "\t":
+					attrs += " "
+					break
+				case "\n":
+					attrs += " "
+					col = 0
+					line++
+					index++
+					continue
+				default:
+					attrs += next()
+			}
+			index++
+			col++
+		}
+		if (!remaining() && next() !== "]") {
+			return {ok: [], err: "Unclosed attribute brackets", rem: ""}
+		}
+		index++
+		col++
+		class_ = class_.replaceAll(/[ +]/g, " ")
+	}
+
+	if (VOID_ELEMENTS.includes(type)) {
+		out.push({type: type, id: id, class: class_, attrs: attrs, void: true})
+		return {ok: out, err: null, rem: src.slice(index, src.length)}
+	}
+
+	out.push({type: type, id: id, class: class_, attrs: attrs})
+
+	// match the inner section
+	default_tag = INLINE_ELEMENTS.includes(type) ? "span" : "div"
+	str_replace = type !== "style"
+	// skip spaces and tabs
+	while (remaining() && " \t".includes(next())) {
+		index++
+		col++
+	}
+	if (!remaining()) {
+		out.push({type: "close"})
+		return {ok: out, err: null, rem: src.slice(index, src.length)}
+	}
+	// check if element has one inner or block inner
+	if (next() === ">") {
+		index++
+		col++
+		let res = tokenise_inner(src.slice(index, src.length), default_tag, str_replace)
+		if (res.err) {
+			return {ok: [], err: res.err, rem: ""}
+		}
+		src = res.rem
+		index = 0
+		res.ok.forEach((tok) => {
+			out.push(tok)
+		})
+	} else if (next() === "{") {
+		index++
+		col++
+		src = src.slice(index, src.length)
+		while (remaining() && next() !== "}") {
+			let res = tokenise_inner(src, default_tag, str_replace)
+			if (res.err) {
+				return {ok: [], err: res.err, rem: ""}
+			}
+			res.ok.forEach((tok) => {
+				out.push(tok)
+			})
+			src = res.rem
+			index = 0
+			while (remaining()) {
+				if (next() === " " || next() === "\t") {
+					col++
+					index++
+				} else if (next() === "\n") {
+					col = 0
+					index++
+					line++
+				} else {
+					break
+				}
+			}
+			src = src.slice(index, src.length)
+			index = 0
+		}
+		if (!remaining()) {
+			return {ok: [], err: "Unclosed block! Expected closing '}' found EOF!", rem: ""}
+		}
+		index++
+		col++
+	}
+
+	out.push({type: "close"})
+
+	return {ok: out, err: null, rem: src.slice(index, src.length)}
 }
 
-// Parse HBML element
-const parseEl = (iter, parentTag = "") => {
-    let unparsedSelector = ""
-    let childrenOutputs = []
-
-    let mode = 0
-
-    let multiline = false
-    let inSquares = false
-
-    while (iter.hasNext() && mode <= 1) {
-        const next = iter.next()
-
-        switch (mode) {
-            case 0:
-                if (next === ">" && !inSquares) mode = 1
-                else if (next === "{") {
-                    mode = 1
-                    multiline = true
-                }
-                else if (next === "\n" && !inSquares) {
-                    mode = 2
-                }
-                else if (next.match(validQuotes) && !inSquares) {
-                    iter.back()
-                    mode = 2
-                }
-                else if (next.match(/[\s}]/) && !inSquares) {
-                    if (iter.peek() !== "{" && iter.peek() !== ">") mode = 2
-                }
-                else {
-                    if (next === "[") inSquares = true
-                    else if (next === "]") inSquares = false
-                    unparsedSelector += next
-                }
-                break
-            case 1:
-                const {tag} = parseSelector(unparsedSelector, INLINE_ELEMENTS.includes(parentTag.toLowerCase()))
-
-                if ((childrenOutputs.length > 0 || next === "\n") && !multiline) {
-                    iter.back() // So the parent can capture the space again
-                    mode = 2
-                }
-                else if (next === "}" && multiline) {
-                    mode = 2
-                }
-                else if (!next.match(/\s/)) {
-                    // Void elements are not allowed to have children
-                    if (!VOID_ELEMENTS.includes(tag.toLowerCase())) {
-                        iter.back()
-                        if (multiline) {
-                            childrenOutputs[childrenOutputs.length] = parseElChild(iter, tag)
-                        } else {
-                            childrenOutputs = [parseElChild(iter, tag)]
-                        }
-                    }
-                    else childrenOutputs = [`<!-- Void element ${tag} may not have child nodes -->`]
-                }
-
-                break
-        }
-    }
-
-    const {tag, attributes} = parseSelector(unparsedSelector, INLINE_ELEMENTS.includes(parentTag.toLowerCase()))
-
-    // Add closing tag for non-void elements
-    const closingTag = !VOID_ELEMENTS.includes(tag.toLowerCase())
-
-    return (
-        `${tag.toLowerCase() === "html" ? `<!DOCTYPE html>` : ""}<${tag}${attributes ? ` ${attributes}` : ""}${!closingTag ? `/` : ""}>${childrenOutputs.join("")}${closingTag ? `</${tag}>` : ""}`
-    )
+/**
+ * ### Token stringification
+ *
+ * Turns a token stream into a string
+ * @param src {Object[]} Token stream from {@link tokenise}
+ * @return {string}
+ */
+const stringify = (src) => {
+	let tag_buff = []
+	return src.reduce((acc, curr) => {
+		switch (curr.type) {
+			case "doctype":
+				return `${acc}<!DOCTYPE html>`
+			case "close":
+				return `${acc}</${tag_buff.pop()}>`
+			case "string_literal":
+				return `${acc}${curr.value}`
+			case "comment":
+				return `${acc}<!-- ${curr.value} -->`
+			case ":root":
+				tag_buff.push("html")
+				let root_attr_str = `${curr.id ? ` id="${curr.id}"` : ""}${curr.class ? ` class="${curr.class}"` : ""}${curr.attrs ? ` ${curr.attrs}` : ""}`
+				return `${acc}<html${root_attr_str}>`
+			default:
+				let attr_str = `${curr.id ? ` id="${curr.id}"` : ""}${curr.class ? ` class="${curr.class}"` : ""}${curr.attrs ? ` ${curr.attrs}` : ""}`
+				if (curr.void) {
+					return `${acc}<${curr.type}${attr_str}/>`
+				}
+				tag_buff.push(curr.type)
+				return `${acc}<${curr.type}${attr_str}>`
+		}
+	}, "")
 }
 
-export const parseHBML = (hbml) => {
-    // The input is wrapped in the "TRUE_ROOT" you can have multiple top level components, such as comments
-    const parsed = `${parseEl(createIterString(`${TRUE_ROOT}{${hbml.trim()}}`))}`
-
-    // The "TRUE_ROOT" is stripped out of the final HTML output
-    return parsed.substring(TRUE_ROOT.length+2, parsed.length-(TRUE_ROOT.length+3))
+/**
+ * Alias for tokenising and then stringifying input text
+ * @param src {string} Input string
+ * @return {{ok: (String | null), err: (Object | null )}}
+ */
+export const fullStringify = (src) => {
+	const {ok, err} = tokenise(src)
+	if (err) {
+		return {ok: null, err: err}
+	}
+	return {ok: stringify(ok), err: null}
 }
