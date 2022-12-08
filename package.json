@@ -1,0 +1,20 @@
+{
+  "name": "hbml",
+  "version": "0.1.0",
+  "repository": "github:heyitsdoodler/hbml",
+  "main": "src/index.js",
+  "dependencies": {
+    "chalk": "^5.1.2",
+    "configstore": "6.0.0",
+    "minimist": "1.2.7",
+    "walkdir": "0.4.1"
+  },
+  "bin": {
+    "hbml": "src/index.js"
+  },
+  "scripts": {
+    "test": "node src/index.js build test -o html"
+  },
+  "license": "MIT",
+  "type": "module"
+}

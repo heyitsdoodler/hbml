@@ -340,7 +340,7 @@ const parseEl = (iter, parentTag = "") => {
     const closingTag = !VOID_ELEMENTS.includes(tag.toLowerCase())
 
     return (
-        `${tag.toLowerCase() === "html" ? `<!doctype html>` : ""}<${tag}${attributes ? ` ${attributes}` : ""}${!closingTag ? `/` : ""}>${childrenOutputs.join("")}${closingTag ? `</${tag}>` : ""}`
+        `${tag.toLowerCase() === "html" ? `<!DOCTYPE html>` : ""}<${tag}${attributes ? ` ${attributes}` : ""}${!closingTag ? `/` : ""}>${childrenOutputs.join("")}${closingTag ? `</${tag}>` : ""}`
     )
 }
 
