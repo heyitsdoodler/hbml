@@ -9,7 +9,7 @@ import {parseHBML} from "../parser.js";
  * Takes in arguments and runs the appropriate command
  * @param args {Object} command line arguments after build command
  */
-export function build_runner(args) {
+export const build_runner = (args) => {
 	// help flags
 	if (args["h"] !== undefined || args["help"] !== undefined) {
 		help()
@@ -58,7 +58,7 @@ export function build_runner(args) {
  *
  * Prints help info for the build command then ends the process
  */
-function help() {
+const help = () => {
 	console.log(`Usage: hbml build [source]... [options]
 
 Builds HBML files into HTML files
@@ -82,7 +82,7 @@ ${chalk.bold(chalk.underline('Options:'))}
  * @param output {string} Output path prefix
  * @param allow {Object} Allow arguments
  */
-function build_internal(paths, output, allow) {
+const build_internal = (paths, output, allow) => {
 	console.log("Building HTML files...")
 	let file_num = 0
 	console.time("hbml_build")
@@ -113,7 +113,7 @@ function build_internal(paths, output, allow) {
 			break
 		}
 		if (path.type === "file") {
-			file_num += 1
+			file_num++
 			parse_file(path, allow)
 		} else {
 			fs.readdirSync(path.read).forEach((subpath) => {
@@ -136,7 +136,7 @@ function build_internal(paths, output, allow) {
  * @param path {Object} Path object
  * @param allow {Object} Allow arguments
  */
-function parse_file(path, allow) {
+const parse_file = (path, allow) => {
 	fs.readFile(path.read, (err, data) => {
 		if (err) {
 			if (allow.not_found) {
