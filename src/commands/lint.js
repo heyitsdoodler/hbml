@@ -177,7 +177,6 @@ const lint_file = (path, allow, opts) => {
 	let i = 0;
 	const stringify = (t) => {
 		const ident_str = opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])
-		i++
 		switch (t.type) {
 			case "comment":
 				return `${ident_str}/* ${t.value} */\n`
@@ -187,11 +186,12 @@ const lint_file = (path, allow, opts) => {
 				ident--
 				return `${opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])}}\n`
 			default:
-				const tag_full = `${t.implicit && !opts['lint.config.replace_implicit'] ? "" : t.type}${t.id ? `#${t.id}` : ""}${t.class ? `.${ttclass.replaceAll(" ", ".")}` : ""}${t.attrs ? `[${t.attrs}]` : ""}`
+				const tag_full = `${t.implicit && !opts['lint.config.replace_implicit'] ? "" : t.type}${t.id ? `#${t.id}` : ""}${t.class ? `.${t.class.replaceAll(" ", ".")}` : ""}${t.attrs ? `[${t.attrs}]` : ""}`
 				if (t.void) {
 					return `${ident_str}${tag_full}\n`
 				}
-				let out = `${ident_str}${tag_full}${" ".repeat(tag_full ? opts['lint.config.pre_tag_space'] : 0)}${t.inline ? ">" : "{"}${" ".repeat(opts['lint.config.post_tag_space'])}`
+				let out = `${ident_str}${tag_full}${" ".repeat(tag_full ? opts['lint.config.pre_tag_space'] : 0)}` +
+					`${t.inline ? `>${" ".repeat(opts['lint.config.post_tag_space'])}` : "{"}`
 				if (t.inline) {
 					if (opts['lint.config.inline_same_line']) {
 						let temp = ident
