@@ -125,10 +125,10 @@ export const tokenise = (src) => {
 	if (err) {
 		return {ok: [], err: {desc: err, ln: line, col: col}}
 	}
-	// // check that the whole string was used
-	// if (rem.length !== 0) {
-	// 	return {ok: [], err: {desc: "Unexpected tokens!. Expected EOF", ln: line, col: col}}
-	// }
+	// check that the whole string was used
+	if (rem.length !== 0) {
+		return {ok: [], err: {desc: "Unexpected tokens!. Expected EOF", ln: line, col: col}}
+	}
 
 	// check that a ':root' or 'html' tag is the first, and make sure it has a 'lang' attribute
 	if (ok[0] !== undefined) {
@@ -354,7 +354,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
  * @param src {Object[]} Token stream from {@link tokenise}
  * @return {string}
  */
-const stringify = (src) => {
+export const stringify = (src) => {
 	let tag_buff = []
 	return src.reduce((acc, curr) => {
 		switch (curr.type) {
@@ -387,6 +387,8 @@ const stringify = (src) => {
  * @return {{ok: (String | null), err: (Object | null )}}
  */
 export const fullStringify = (src) => {
+	line = 0
+	col = 0
 	const {ok, err} = tokenise(src)
 	if (err) {
 		return {ok: null, err: err}

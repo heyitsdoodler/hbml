@@ -1,6 +1,5 @@
 import Benchmark from "benchmark"
-import {parseHBML} from "./old_parser.js";
-import {fullStringify} from "./parser.js";
+import {fullStringify as fsv2} from "./parser.js";
 
 let suite = new Benchmark.Suite("HBML parser benchmark")
 
@@ -66,6 +65,7 @@ const test_str = `
         div {
             "Double quote string" br 'Single quote string' br \`Back tick string\`
         }
+        /* some strange but technically allowable syntax */
         a[at1="1"
         at2="2"]
     }
@@ -73,10 +73,7 @@ const test_str = `
 `
 
 suite.add("current", () => {
-	parseHBML(test_str)
-})
-.add("proposed", () => {
-	fullStringify(test_str)
+	fsv2(test_str)
 })
 .on("cycle", (event) => {
 	console.log(String(event.target));

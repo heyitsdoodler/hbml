@@ -4,7 +4,7 @@ import npath from "path"
 import {fullStringify} from "../parser.js";
 
 /**
- * Build function runer
+ * Build function runner
  *
  * Takes in arguments and runs the appropriate command
  * @param args {Object} command line arguments after build command
