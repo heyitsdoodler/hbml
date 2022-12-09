@@ -20,7 +20,7 @@ export const lint_runner = (args, project) => {
 			process.exit(1)
 		}
 		files = conf_res.ok["lint.src"]
-		out = conf_res.ok["lint.out"]
+		out = conf_res.ok["lint.output"]
 		Object.keys(allow).forEach((k) => allow[k] = conf_res.ok[`build.${k}`])
 		conf = conf_res.ok
 	} else {
@@ -140,8 +140,8 @@ const lint_internal = (paths, output, allow, lint_opts) => {
 			lint_file(path, allow, lint_opts)
 		} else {
 			fs.readdirSync(path.read).forEach((subpath) => {
-				const read = npath.normalize(`${path.read}/${subpath}`)
-				let write = npath.normalize(`${path.write}/${subpath}`)
+				const read = npath.join(path.write, subpath)
+				let write = npath.join(path.write, subpath)
 				const type = fs.lstatSync(read).isDirectory() ? "dir" : "file"
 				if ((type === "file" && read.endsWith(".hbml")) || type === "dir") {
 					filtered.push({read: read, write: write, type: type})
@@ -165,7 +165,7 @@ const lint_file = (path, allow, opts) => {
 		if (allow.parse) {
 			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))
 		} else {
-			console.log(chalk.red(`Unable to parse file ${path.read}! Stopping!\nTo skip over incorrectly formatted files, pass the -s=parse flag`))
+			console.log(chalk.red(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Stopping!\nTo skip over incorrectly formatted files, pass the -s=parse flag`))
 			process.exit(1)
 		}
 		return

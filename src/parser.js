@@ -126,8 +126,8 @@ export const tokenise = (src) => {
 		return {ok: [], err: {desc: err, ln: line, col: col}}
 	}
 	// check that the whole string was used
-	if (rem.length !== 0) {
-		return {ok: [], err: {desc: "Unexpected tokens!. Expected EOF", ln: line, col: col}}
+	if (rem.trim().length !== 0) {
+		return {ok: [], err: {desc: "Unexpected tokens! Expected EOF", ln: line, col: col}}
 	}
 
 	// check that a ':root' or 'html' tag is the first, and make sure it has a 'lang' attribute
