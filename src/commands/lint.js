@@ -1,7 +1,8 @@
-import {getCongif} from "../config_parse.js";
+import {defs, getConfig} from "../config_parse.js";
 import chalk from "chalk";
 import npath from "path";
 import fs from "fs";
+import {tokenise} from "../parser.js";
 
 export const lint_runner = (args, project) => {
 	// help flags
@@ -11,15 +12,17 @@ export const lint_runner = (args, project) => {
 	let files
 	let out
 	let allow = {write: false, not_found: false, parse: false}
+	let conf = defs
 	if (project) {
-		const conf_res = getCongif()
+		const conf_res = getConfig()
 		if (conf_res.err) {
-			console.log(chalk.red(`Error parsing config file (${conf_res.err}`))
+			console.log(chalk.red(`Error parsing config file (${conf_res.err})`))
 			process.exit(1)
 		}
-		files = conf_res.ok.build.src
-		out = conf_res.ok.build.out
-		allow = conf_res.ok.build.allow
+		files = conf_res.ok["lint.src"]
+		out = conf_res.ok["lint.out"]
+		Object.keys(allow).forEach((k) => allow[k] = conf_res.ok[`build.${k}`])
+		conf = conf_res.ok
 	} else {
 		// get files to build
 		files = args["_"];
@@ -68,7 +71,7 @@ export const lint_runner = (args, project) => {
 		console.log(chalk.red(`Unexpected arguments ${Object.keys(args).join(", ")}! See 'hbml lint -h' for help`))
 		process.exit(1)
 	}
-	lint_internal(files, out, allow)
+	lint_internal(files, out, allow, conf)
 }
 /**
  * Prints help for the lint command then exits
@@ -151,12 +154,75 @@ const lint_internal = (paths, output, allow, lint_opts) => {
 
 /**
  * Lint an individual file
- * @param path{string} Path to file
+ * @param path{Object} Path to file
  * @param allow{Object} Allow options
  * @param opts{Object} Lint options
  */
 const lint_file = (path, allow, opts) => {
-	console.log("WIP! Not yet functional. Exiting")
-	process.exit(2)
-	if (path) {}
+	let tokens;
+	const res = tokenise(fs.readFileSync(path.read).toString())
+	if (res.err) {
+		if (allow.parse) {
+			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))
+		} else {
+			console.log(chalk.red(`Unable to parse file ${path.read}! Stopping!\nTo skip over incorrectly formatted files, pass the -s=parse flag`))
+			process.exit(1)
+		}
+		return
+	}
+	// remove doctype tag included by default
+	tokens = res.ok.slice(1)
+	let ident = 0
+	let out = ""
+	let i = 0;
+	const stringify = (t) => {
+		const ident_str = opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])
+		i++
+		switch (t.type) {
+			case "comment":
+				return `${ident_str}/* ${t.value} */\n`
+			case "string_literal":
+				return `${ident_str}"${t.value.replaceAll(`"`, `\\"`)}"\n`
+			case "close":
+				ident--
+				return `${opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])}}\n`
+			default:
+				const tag_full = `${t.implicit && !opts['lint.config.replace_implicit'] ? "" : t.type}${t.id ? `#${t.id}` : ""}${t.class ? `.${ttclass.replaceAll(" ", ".")}` : ""}${t.attrs ? `[${t.attrs}]` : ""}`
+				if (t.void) {
+					return `${ident_str}${tag_full}\n`
+				}
+				let out = `${ident_str}${tag_full}${" ".repeat(tag_full ? opts['lint.config.pre_tag_space'] : 0)}${t.inline ? ">" : "{"}${" ".repeat(opts['lint.config.post_tag_space'])}`
+				if (t.inline) {
+					if (opts['lint.config.inline_same_line']) {
+						let temp = ident
+						ident = 0
+						out += stringify(tokens[i])
+						ident = temp
+					} else {
+						ident++
+						out += stringify(tokens[i])
+						ident--
+					}
+					// move over close bracket token
+					i++
+				} else {
+					ident++
+				}
+				return out + "\n"
+		}
+	}
+	for (i = 0; i < tokens.length; i++) {
+		out += stringify(tokens[i])
+	}
+	fs.writeFile(path.write, out, (write_err) => {
+		if (write_err) {
+			if (allow.write) {
+				console.log(chalk.yellow(`Unable to write file ${path.write}! Skipping over file`))
+			} else {
+				console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
+				process.exit(1)
+			}
+		}
+	})
+	// write out to file
 }

@@ -10,7 +10,8 @@ import {build_runner} from "./commands/build.js";
 import {lint_runner} from "./commands/lint.js";
 
 const project = process.argv[3] === "project"
-const args = minimist(process.argv.slice(project ? 4 : 3))
+let args = minimist(process.argv.slice(project ? 4 : 3))
+args = process.argv.length > (project ? 4 : 3) ? args : {}
 switch (process.argv[2]) {
 	case undefined:
 		console.log(chalk.red("No command given! Try running 'hbml -h' to see help messages"));

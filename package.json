@@ -19,7 +19,8 @@
   },
   "scripts": {
     "test": "node src/index.js build test/bench.hbml",
-    "bench": "node src/bench.js"
+    "bench": "node src/bench.js",
+    "lint": "node src/index.js lint project"
   },
   "license": "MIT",
   "type": "module"

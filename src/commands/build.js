@@ -2,7 +2,7 @@ import chalk from "chalk";
 import fs from "fs"
 import npath from "path"
 import {fullStringify} from "../parser.js";
-import {getCongif} from "../config_parse.js";
+import {getConfig} from "../config_parse.js";
 
 /**
  * Build function runner
@@ -20,7 +20,7 @@ export const build_runner = (args, project) => {
 	let out
 	let allow = {write: false, not_found: false, parse: false}
 	if (project) {
-		const conf_res = getCongif()
+		const conf_res = getConfig()
 		if (conf_res.err) {
 			console.log(chalk.red(`Error parsing config file (${conf_res.err}`))
 			process.exit(1)
@@ -31,7 +31,7 @@ export const build_runner = (args, project) => {
 	} else {
 		// get files to build
 		files = args["_"];
-		if (files === []) {
+		if (!files) {
 			files = ["."]
 		}
 		delete args["_"]
@@ -194,7 +194,6 @@ const parse_file = (path, allow) => {
 						console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
 						process.exit(1)
 					}
-					return
 				}
 			}
 		)
