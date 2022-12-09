@@ -47,47 +47,34 @@ const schema = {
 }
 
 /**
- * Merge two objects dynamically using `a` as the default and `b` as the new object
- * See {@link https://stackoverflow.com/a/74743115/13285842|here} for were I got the code from
- * @param a{Object} Default values
- * @param b{Object} New values
- * @return {Object}
+ * Flattens an object to make sure it's all single depth.
+ * For example `flatten({a: 1, b: {c: 2, d: 3}}) === {'a': 1, 'b.c': 2, 'b.d': 3}`
+ * @param a{Object} Object to flatten
+ * @return {Object} Flattened object
  */
-const merge = (a, b) => [a, b].reduce((r, o) => Object
-	.entries(o)
-	.reduce((q, [k, v]) => ({
-		...q,
-		[k]: v && typeof v === 'object' ? merge(q[k] || {}, v) : v
-	}), r), {})
+const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
+	...q,
+	...(v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(flatten(v)).reduce((p, [j, i]) => ({...p, [k + '.' + j]: i}), {}) : {[k]: v})
+}), {});
 
 /**
  * Default config values
  * @type {Object}
  */
 const defs = {
-	lint: {
-		src: ["/"],
-		output: "/",
-		config: {
-			indent: {
-				character: "\t",
-				count: 1
-			},
-			pre_tag_space: 1,
-			post_tag_space: 1,
-			inline_same_line: true,
-			void_inline: true
-		}
-	},
-	build: {
-		src: ["/"],
-		output: "html",
-		allow: {
-			not_found: false,
-			write: false,
-			parse: false,
-		}
-	}
+	'lint.src': [ '/' ],
+	'lint.output': '/',
+	'lint.config.indent.character': '\t',
+	'lint.config.indent.count': 1,
+	'lint.config.pre_tag_space': 1,
+	'lint.config.post_tag_space': 1,
+	'lint.config.inline_same_line': true,
+	'lint.config.void_inline': true,
+	'build.src': [ '/' ],
+	'build.output': 'html',
+	'build.allow.not_found': false,
+	'build.allow.write': false,
+	'build.allow.parse': false
 }
 
 /**
@@ -104,6 +91,6 @@ export const getCongif = () => {
 		}
 		const parsed = parse(data)
 		if (!parsed) return {ok: null, err: parse.message}
-		return {ok: merge(defs, parsed), err: null}
+		return {ok: {...defs, ...flatten(parsed)}, err: null}
 	})
 }
