@@ -9,6 +9,8 @@ const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
 import {build_runner} from "./commands/build.js";
 import {lint_runner} from "./commands/lint.js";
 
+import {tokenise, stringify, fullStringify} from "./parser.js";
+
 const project = process.argv[3] === "project"
 let args = minimist(process.argv.slice(project ? 4 : 3))
 args = process.argv.length > (project ? 4 : 3) ? args : {}
@@ -55,3 +57,5 @@ ${chalk.bold(chalk.underline('Options:'))}
         Shows this message`)
 	process.exit()
 }
+
+export {tokenise, stringify, fullStringify}
