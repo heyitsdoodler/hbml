@@ -56,7 +56,7 @@ The `-s` flag is the same for `hbml build`
 
 Place a `hbml.json` file in your project root directory with the following format. None of the values are required. The comments represent the required type if the value is given, and the value in brackets represents the default value
 
-```json lines
+```js
 {
   "lint": {
     "src": ["list", "of", "paths"], // string[] (["."])
