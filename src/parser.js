@@ -203,7 +203,9 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	}
 	// check for tag name
 	let type;
-	if (!">#.".includes(next())) {
+	let implicit;
+	if (!">#.{[>".includes(next())) {
+		implicit = false
 		type = ""
 		while (remaining() && !"#. \t\n\"'`/>{[".includes(next())) {
 			type += next()
@@ -211,10 +213,11 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 			col++
 		}
 	} else {
+		implicit = true
 		type = default_tag
 	}
 	if (!remaining()) {
-		return {ok: [{type: type, id: "", class: "", attrs: ""}, {type: "close"}], err: null, rem: ""}
+		return {ok: [{type: type, id: "", class: "", attrs: "", implicit: implicit}, {type: "close"}], err: null, rem: ""}
 	}
 	// check for id
 	let id = "";
@@ -311,6 +314,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 		index++
 		col++
 		src = src.slice(index, src.length)
+		index = 0
 		while (remaining() && next() !== "}") {
 			let res = tokenise_inner(src, default_tag, str_replace)
 			if (res.err) {

@@ -25,6 +25,7 @@ const schema = {
 						"pre_tag_space": {"type": "uint8"},
 						"post_tag_space": {"type": "uint8"},
 						"inline_same_line": {"type": "boolean"},
+						"keep_implicit": {"type": "boolean"},
 						"void_inline": {"type": "boolean"}
 					}
 				}
@@ -61,7 +62,7 @@ const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
  * Default config values
  * @type {Object}
  */
-const defs = {
+export const defs = {
 	'lint.src': [ '/' ],
 	'lint.output': '/',
 	'lint.config.indent.character': '\t',
@@ -69,6 +70,7 @@ const defs = {
 	'lint.config.pre_tag_space': 1,
 	'lint.config.post_tag_space': 1,
 	'lint.config.inline_same_line': true,
+	'lint.config.keep_implicit': true,
 	'lint.config.void_inline': true,
 	'build.src': [ '/' ],
 	'build.output': 'html',
@@ -81,16 +83,13 @@ const defs = {
  * Get the config file as an object. Looks for the config file in the current working directory
  * @return {{ok: (Object | null), err: (String | null)}}
  */
-export const getCongif = () => {
+export const getConfig = () => {
 	const ajv = new Ajv()
 	const parse = ajv.compileParser(schema)
 
-	fs.readFile(path.join([process.cwd(), "hbml.json"]), (read_err, data) => {
-		if (read_err) {
-			return {ok: null, err: read_err.toString()}
-		}
-		const parsed = parse(data)
-		if (!parsed) return {ok: null, err: parse.message}
-		return {ok: {...defs, ...flatten(parsed)}, err: null}
-	})
+	const conf_path = path.join(process.cwd(), "hbml.json")
+	if (!fs.existsSync(conf_path)) return {ok: null, err: "Config file hbml.json not found in cwd"}
+	const parsed = parse(fs.readFileSync(conf_path).toString())
+	if (parsed === undefined) return {ok: null, err: parse.message}
+	return {ok: {...defs, ...flatten(parsed)}, err: null}
 }
