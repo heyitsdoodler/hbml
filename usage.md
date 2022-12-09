@@ -53,3 +53,34 @@ The `-o` flag is to specify a custom output instead of overwriting the existing 
 The `-s` flag is the same for `hbml build`
 
 ## Config
+
+Place a `hbml.json` file in your project root directory with the following format. None of the values are required. The comments represent the required type if the value is given, and the value in brackets represents the default value
+
+```json
+{
+  "lint": {
+    "src": ["list", "of", "paths"], // string[] (["."])
+    "output": "output prefix", // string (".")
+    "config": {
+      "indent": {
+        "character": "space or tab", // " " or "\t" ("\t")
+        "count": "number of characters per indent" // number (1)
+      },
+      "pre_tag_space": "spaces before bracket or >", // number (1)
+      "post_tag_space": "spaces after >", // number (1)
+      "inline_same_line": "make > elements all on the same line", // boolean (true)
+      "keep_implicit": "keeps implicit 'div's and 'span's", // boolean (true)
+      "void_inline": "make void elements inline" // boolean (true)
+    }
+  },
+  "build": {
+    "src": ["list", "of", "paths"], // string[] (["."])
+    "output": "output prefix", // string (".")
+    "allow": {
+      "not_found": "ignore file not found errors", // boolean (false)
+      "write": "ignore file write errors", // boolean (false)
+      "parse": "ignore file parsing errors" // boolean (false)
+    }
+  }
+}
+```
