@@ -295,6 +295,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	}
 	// check if element has one inner or block inner
 	if (next() === ">") {
+		out.push({...out.pop(), inline: true})
 		index++
 		col++
 		let res = tokenise_inner(src.slice(index, src.length), default_tag, str_replace)

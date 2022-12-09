@@ -4,12 +4,12 @@
   "version": "0.1.0",
   "repository": "github:heyitsdoodler/hbml",
   "main": "src/index.js",
-  "files": ["src/index.js", "src/constants.js", "src/parser.js", "src/linter.js", "src/commands/"],
+  "files": ["src/index.js", "src/constants.js", "src/parser.js", "src/commands/"],
   "dependencies": {
     "chalk": "5.1.2",
     "configstore": "6.0.0",
     "minimist": "1.2.7",
-    "walkdir": "0.4.1"
+    "ajv": "8.11.2"
   },
   "devDependencies": {
     "benchmark": "2.1.4"

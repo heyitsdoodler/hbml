@@ -7,8 +7,10 @@ import fs from "fs";
 const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
 
 import {build_runner} from "./commands/build.js";
+import {lint_runner} from "./commands/lint.js";
 
-const args = minimist(process.argv.slice(3))
+const project = process.argv[3] === "project"
+const args = minimist(process.argv.slice(project ? 4 : 3))
 switch (process.argv[2]) {
 	case undefined:
 		console.log(chalk.red("No command given! Try running 'hbml -h' to see help messages"));
@@ -24,7 +26,10 @@ switch (process.argv[2]) {
 		console.log(`HBML version ${version}`)
 		break;
 	case "build":
-		build_runner(args)
+		build_runner(args, project)
+		break
+	case "lint":
+		lint_runner(args, project)
 		break
 	default:
 		console.log(chalk.red(`Unknown command ${process.argv[2]}! Try running 'hbml -h' to see available commands`));
