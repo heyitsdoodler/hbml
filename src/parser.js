@@ -42,6 +42,9 @@ const parseComment = (src) => {
 	let out = ""
 	let index = 0
 
+	if (src.slice(0,2) !== "/*") return {ok: null, err: "Expected '*' after /", rem: ""}
+	src = src.slice(2)
+
 	while (true) {
 		if (index === src.length) {
 			return {ok: null, err: "Expected end of comment! Found EOF", rem: ""}
@@ -370,7 +373,7 @@ export const stringify = (src) => {
 			case "string_literal":
 				return `${acc}${curr.value}`
 			case "comment":
-				return `${acc}<!-- ${curr.value} -->`
+				return `${acc}<!--${curr.value}-->`
 			case ":root":
 				tag_buff.push("html")
 				let root_attr_str = `${curr.id ? ` id="${curr.id}"` : ""}${curr.class ? ` class="${curr.class}"` : ""}${curr.attrs ? ` ${curr.attrs}` : ""}`
