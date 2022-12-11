@@ -34,7 +34,7 @@ const convertReservedChar = (string) => {
 }
 
 /**
- * Parse multiline comment
+ * Parse comment
  * @param src {String} String to take comment from
  * @return {{ok: (Object | null), err: (String | null), rem: String}}
  */
@@ -42,7 +42,9 @@ const parseComment = (src) => {
 	let out = ""
 	let index = 0
 
-	if (src.slice(0,2) !== "/*") return {ok: null, err: "Expected '*' after /", rem: ""}
+	const multiline = src.slice(0,2) === "/*"
+
+	if (!(multiline || src.slice(0,2) === "//")) return {ok: null, err: "Expected '*' or '/' after /", rem: ""}
 	src = src.slice(2)
 
 	while (true) {
@@ -53,10 +55,12 @@ const parseComment = (src) => {
 
 		index++
 		col++
-		if (next === "*" && src[index] === "/") {
+		if (multiline && next === "*" && src[index] === "/") {
 			index++
 			break
 		} else if (next === "\n") {
+			if (!multiline) break
+
 			out += next
 			col = 0
 			line++
@@ -181,6 +185,10 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 			col = 0
 			index++
 			line++
+		}
+		// jump out of empty block
+		else if (next() === "}") {
+			return {ok: [], err: null, rem: src.slice(index, src.length)}
 		} else {
 			break
 		}
@@ -227,7 +235,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	if (next() === "#") {
 		index++
 		col++
-		while (remaining() && !">{. \t\n".includes(next())) {
+		while (remaining() && !">{.[ \t\n".includes(next())) {
 			id += next()
 			index++
 			col++
@@ -239,8 +247,8 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	// check for classes
 	let class_ = "";
 	if (next() === ".") {
-		while (remaining() && !">{ \t\n".includes(next())) {
-			id += next()
+		while (remaining() && !">{[ \t\n".includes(next())) {
+			class_ += next()
 			index++
 			col++
 		}
