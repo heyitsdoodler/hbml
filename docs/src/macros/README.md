@@ -1,7 +1,3 @@
 # Macros
 
-HBML has two types of macros:
-1. [child macros](child.md)
-2. [parent macros](parent.md)
-
-Go have a read about them to see how they work
+HBML has allows you to simplify your code with macros. Macros are scoped and mutable and have standard defaults available to use. In this chapter, we'll introduce the basics of macros and how to use them, then we'll delve into more complex macros with conditionals that really give macros their power.
