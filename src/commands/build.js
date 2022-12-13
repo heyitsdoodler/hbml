@@ -171,7 +171,7 @@ const parse_file = (path, allow) => {
 			return
 		}
 		path.write = `${path.write.slice(0, path.write.length - 5)}.html`
-		const {ok, err} = fullStringify(data.toString())
+		const {ok, err} = fullStringify(data.toString(), path.read)
 		if (err) {
 			if (allow.parse) {
 				console.log(chalk.yellow(`Unable to parse file ${path.write}(${err.desc})! Skipping over file`))

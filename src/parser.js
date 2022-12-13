@@ -5,6 +5,7 @@
  */
 
 import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, SPACE_AND_TAB, UNIQUE_ATTRS} from "./constants.js"
+import {Token, Error, Macro} from "./classes.js";
 import chalk from "chalk";
 
 /**
@@ -42,7 +43,7 @@ const convertReservedChar = (string) => {
 /**
  * Parse comment
  * @param src {String} String to take comment from
- * @return {{ok: (Object | null), err: (String | null), rem: String}}
+ * @return {{ok: (Token | null), err: (String | null), rem: String}}
  */
 const parseComment = (src) => {
 	let out = ""
@@ -75,7 +76,7 @@ const parseComment = (src) => {
 		}
 	}
 
-	return {ok: {type: "comment", value: out}, err: null, rem: src.slice(index, src.length)}
+	return {ok: new Token("comment", {}, {value: out}, []), err: null, rem: src.slice(index, src.length)}
 }
 
 /**
@@ -84,7 +85,7 @@ const parseComment = (src) => {
  * @param str {string} String to parse string literal from
  * @param char {string} Opening string character to match
  * @param convert {boolean} Convert string via {@link convertReservedChar}
- * @return {{ok: (Object | number), err: (String | null), rem: String}}
+ * @return {{ok: (string | null), err: (string | null), rem: string}}
  */
 const parseStr = (str, char = "\"", convert = true) => {
 	let index = 1
@@ -118,7 +119,7 @@ const parseStr = (str, char = "\"", convert = true) => {
 	col++
 
 	return {
-		ok: {type: "string_literal", value: convert ? convertReservedChar(out) : out},
+		ok: convert ? convertReservedChar(out) : out,
 		err: null,
 		rem: str.slice(index, str.length)
 	}
@@ -129,10 +130,11 @@ const parseStr = (str, char = "\"", convert = true) => {
  * @param src{string} Source string to parse
  * @param unique_replace{number} Allow unique attribute replacements (0 -> no message, 1 -> warning, 2 -> error)
  * @param unique_position{boolean} false if keep first occurrence of a uniquer attribute, true for keep the last occurrence
- * @return {{ok: (string|null), err: (null|string), rem: string}}
+ * @param initial {Object} Initial attributes
+ * @return {{ok: (Object | null), err: (null | string), rem: string}}
  */
-const getAttrs = (src, unique_replace, unique_position) => {
-	let attrsObj = {}
+const getAttrs = (src, unique_replace, unique_position, initial) => {
+	let attrsObj = initial
 	let index = 0
 	const remaining = () => index < src.length
 	const next = () => src[index]
@@ -179,9 +181,7 @@ const getAttrs = (src, unique_replace, unique_position) => {
 		// parse key
 		let key = ""
 		while (index < src.length) {
-			if (" \t\n='\"`]".includes(src[index])) {
-				break
-			}
+			if (" \t\n='\"`]".includes(src[index])) break
 			key += src[index]
 			index++
 			col++
@@ -208,7 +208,7 @@ const getAttrs = (src, unique_replace, unique_position) => {
 			if (res.err) return {ok: null, err: res.err, rem: ""}
 			src = res.rem
 			index = -1
-			res.ok.value.replaceAll("\"", "&quot;").split(/ +/g).forEach((v) => {
+			res.ok.replaceAll("\"", "&quot;").split(/ +/g).forEach((v) => {
 				const res = insertValue(key, v)
 				if (res) return res
 			})
@@ -219,9 +219,7 @@ const getAttrs = (src, unique_replace, unique_position) => {
 		index++
 	}
 
-	if (!remaining() && next() !== "]") {
-		return {ok: null, err: "Unclosed attribute brackets", rem: ""}
-	}
+	if (!remaining()) return {ok: null, err: "Unclosed attribute brackets", rem: ""}
 	index++
 	col++
 
@@ -233,20 +231,20 @@ const getAttrs = (src, unique_replace, unique_position) => {
  *
  * Wrapper for the main tokeniser. Adds the doctype tag and not much else really
  * @param src {string} String to tokenise
- * @return {{ok: (Object[] | null), err: (Object | null)}}} (Ok: ``array of tokens, Err: Error description and position)
+ * @param path {string} Path to file to be tokenised. Used for error info
+ * @return {{ok: (Object[] | null), err: (Error | null)}}
  */
-export const tokenise = (src) => {
+export const tokenise = (src, path) => {
 	let tokens = []
-	let macros = [[{
-		src: "root", rep: [
-			{type: "!DOCTYPE", id: "", class: "", attrs: {html: true}},
-			{type: "html", id: "", class: "", attrs: {}}
-		]}]]
+	let macros = [[{"root": new Macro([
+			new Token("!DOCTYPE", {html: true}, []),
+			new Token("html", {}, {":children": true}, [new Token(":children", {}, [])])
+		], false)}]]
 
 	while (src.length > 0) {
-		const {ok, err, rem} = tokenise_inner(src, "div")
-		if (err) return {ok: null, err: {desc: err, ln: line, col: col}}
-		if (rem === src) return {ok: null, err: {desc: "Unable to parse remaining text", ln: line, col: col}}
+		const {ok, err, rem} = tokenise_inner(src, "div", true, macros)
+		if (err) return {ok: null, err: new Error(err, path, line, col)}
+		if (rem === src) return {ok: null, err: new Error("Unable to parse remaining text", path, line, col)}
 		src = rem
 		tokens = [...tokens, ...ok]
 	}
@@ -267,9 +265,10 @@ export const tokenise = (src) => {
  * @param src {string} String to tokenise
  * @param default_tag {string} Default tag to use when no other is given
  * @param str_replace {boolean} Pass any string through the {@link convertReservedChar} function
- * @return {{ok: Object[], err: (String | null), rem: String}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
+ * @param macros {Object[][]} Macro arrays
+ * @return {{ok: (Token | string)[], err: (string | null), rem: string}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
  */
-const tokenise_inner = (src, default_tag, str_replace = true) => {
+const tokenise_inner = (src, default_tag, str_replace, macros) => {
 	let index = 0;
 	const remaining = () => src.length > index
 	const next = () => src[index]
@@ -330,9 +329,10 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	if (!remaining()) {
 		return {ok: [{type: type, id: "", class: "", attrs: {}, implicit: implicit}, {type: "close"}], err: null, rem: ""}
 	}
+	let attrs = {}
 	// check for id
-	let id = "";
 	if (next() === "#") {
+		let id = ""
 		index++
 		col++
 		while (remaining() && !">{.[ \t\n".includes(next())) {
@@ -340,40 +340,41 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 			index++
 			col++
 		}
+		attrs["id"] = id
 	}
 	if (!remaining()) {
 		return {ok: [{type: type, id: id, class: "", attrs: {}}, {type: "close"}], err: null, rem: ""}
 	}
 	// check for classes
-	let class_ = "";
 	if (next() === ".") {
+		let class_ = ""
 		while (remaining() && !">{[ \t\n".includes(next())) {
 			class_ += next()
 			index++
 			col++
 		}
-		class_ = class_.replaceAll(".", " ").slice(1, class_.length)
+		attrs["class"] = class_.replaceAll(".", " ").slice(1, class_.length)
 	}
 	if (!remaining()) {
 		return {ok: [{type: type, id: id, class: class_, attrs: {}}, {type: "close"}], err: null, rem: ""}
 	}
 	// check for attributes
-	let attrs = {};
 	if (next() === "[") {
 		index++
-		const attr_res = getAttrs(src, 1, true)
+		const attr_res = getAttrs(src.slice(index), 1, true, attrs)
 		if (attr_res.err) return {ok: null, err: attr_res.err, rem: ""}
 		attrs = attr_res.ok
+		src = attr_res.rem
+		index = 0
 	}
 
 	if (VOID_ELEMENTS.includes(type)) {
-		out.push({type: type, id: id, class: class_, attrs: attrs, void: true})
+		out.push(new Token(type, attrs, {"void": true}, []))
 		return {ok: out, err: null, rem: src.slice(index, src.length)}
 	}
 
-	out.push({type: type, id: id, class: class_, attrs: attrs})
-
 	// match the inner section
+	let children = []
 	default_tag = INLINE_ELEMENTS.includes(type) ? "span" : "div"
 	str_replace = type !== "style"
 	// skip spaces and tabs
@@ -382,36 +383,31 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 		col++
 	}
 	if (!remaining()) {
-		out.push({type: "close"})
+		out.push(new Token(type, attrs, []))
 		return {ok: out, err: null, rem: src.slice(index, src.length)}
 	}
+	let additional = {}
 	// check if element has one inner or block inner
 	if (next() === ">") {
-		out.push({...out.pop(), inline: true})
+		additional["inline"] = true
 		index++
 		col++
-		let res = tokenise_inner(src.slice(index, src.length), default_tag, str_replace)
+		let res = tokenise_inner(src.slice(index, src.length), default_tag, str_replace, macros)
 		if (res.err) {
 			return {ok: [], err: res.err, rem: ""}
 		}
 		src = res.rem
 		index = 0
-		res.ok.forEach((tok) => {
-			out.push(tok)
-		})
+		children = [...children, ...res.ok]
 	} else if (next() === "{") {
 		index++
 		col++
 		src = src.slice(index, src.length)
 		index = 0
 		while (remaining() && next() !== "}") {
-			let res = tokenise_inner(src, default_tag, str_replace)
-			if (res.err) {
-				return {ok: [], err: res.err, rem: ""}
-			}
-			res.ok.forEach((tok) => {
-				out.push(tok)
-			})
+			let res = tokenise_inner(src, default_tag, str_replace, macros)
+			if (res.err) return {ok: [], err: res.err, rem: ""}
+			children = [...children, ...res.ok]
 			src = res.rem
 			index = 0
 			while (remaining()) {
@@ -422,60 +418,18 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 					col = 0
 					index++
 					line++
-				} else {
-					break
-				}
+				} else break
 			}
 			src = src.slice(index, src.length)
 			index = 0
 		}
-		if (!remaining()) {
-			return {ok: [], err: "Unclosed block! Expected closing '}' found EOF!", rem: ""}
-		}
+		if (!remaining()) return {ok: [], err: "Unclosed block! Expected closing '}' found EOF!", rem: ""}
 		index++
 		col++
 	}
 
-	out.push({type: "close"})
-
+	out.push(new Token(type, attrs, additional, children))
 	return {ok: out, err: null, rem: src.slice(index, src.length)}
-}
-
-/**
- * ### Token stringification
- *
- * Turns a token stream into a string
- * @param src {Object[]} Token stream from {@link tokenise}
- * @return {string}
- */
-export const stringify = (src) => {
-	let tag_buff = []
-	return src.reduce((acc, curr) => {
-		switch (curr.type) {
-			case "doctype":
-				return `${acc}<!DOCTYPE html>`
-			case "close":
-				return `${acc}</${tag_buff.pop()}>`
-			case "string_literal":
-				return `${acc}${curr.value}`
-			case "comment":
-				return `${acc}<!--${curr.value}-->`
-			case ":root":
-				tag_buff.push("html")
-				let root_attr_str = `${curr.id ? ` id="${curr.id}"` : ""}${curr.class ? ` class="${curr.class}"` : ""}${curr.attrs ? ` ${curr.attrs}` : ""}`
-				return `${acc}<html${root_attr_str}>`
-			default:
-				const bracket_attrs = curr.attrs ? Object.entries(curr.attrs).map(([k, v]) => {
-					return v === true ? `${k}` : `${k}="${v}"`
-				}).join(" ") : ""
-				let attr_str = `${curr.id ? ` id="${curr.id}"` : ""}${curr.class ? ` class="${curr.class}"` : ""}${bracket_attrs}`
-				if (curr.void) {
-					return `${acc}<${curr.type}${attr_str}/>`
-				}
-				tag_buff.push(curr.type)
-				return `${acc}<${curr.type}${attr_str}>`
-		}
-	}, "")
 }
 
 /**
@@ -488,9 +442,9 @@ export const fullStringify = (src, path) => {
 	line = 1
 	col = 0
 	file = path
-	const {ok, err} = tokenise(src)
+	const {ok, err} = tokenise(src, path)
 	if (err) {
 		return {ok: null, err: err}
 	}
-	return {ok: stringify(ok), err: null}
+	return {ok: ok.map((t) => t.toString()).join("/n"), err: null}
 }
