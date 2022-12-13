@@ -30,7 +30,8 @@ export const VOID_ELEMENTS = [
 	"param",
 	"source",
 	"track",
-	"wbr"
+	"wbr",
+	"!DOCTYPE"
 ]
 
 /**
@@ -91,4 +92,11 @@ export const INLINE_ELEMENTS = [
 	"var",
 	"video",
 	"wbr"
+]
+
+/**
+ * Attributes that can only hav e one value or appear once
+ */
+export const UNIQUE_ATTRS = [
+	"lang"
 ]

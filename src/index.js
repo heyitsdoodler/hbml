@@ -34,6 +34,7 @@ switch (process.argv[2]) {
 	case "lint":
 		lint_runner(args, project)
 		break
+	// todo: init.md
 	default:
 		console.log(chalk.red(`Unknown command ${process.argv[2]}! Try running 'hbml -h' to see available commands`));
 		process.exit(1)
