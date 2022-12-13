@@ -25,9 +25,9 @@ export const build_runner = (args, project) => {
 			console.log(chalk.red(`Error parsing config file (${conf_res.err}`))
 			process.exit(1)
 		}
-		files = conf_res.ok.build.src
-		out = conf_res.ok.build.out
-		allow = conf_res.ok.build.allow
+		files = conf_res.ok["build.src"]
+		out = conf_res.ok["build.out"]
+		allow = conf_res.ok["build.allow"]
 	} else {
 		// get files to build
 		files = args["_"];
