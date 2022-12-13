@@ -247,6 +247,7 @@ export const tokenise = (src) => {
 		const {ok, err, rem} = tokenise_inner(src, "div")
 		if (err) return {ok: null, err: {desc: err, ln: line, col: col}}
 		if (rem === src) return {ok: null, err: {desc: "Unable to parse remaining text", ln: line, col: col}}
+		src = rem
 		tokens = [...tokens, ...ok]
 	}
 

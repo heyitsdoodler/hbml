@@ -98,5 +98,6 @@ export const INLINE_ELEMENTS = [
  * Attributes that can only hav e one value or appear once
  */
 export const UNIQUE_ATTRS = [
-	"lang"
+	"lang",
+	"id"
 ]
