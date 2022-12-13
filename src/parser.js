@@ -4,7 +4,7 @@
  * Split into a {@link tokenise tokeniser} and {@link stringify de-tokeniser} to allow for parsing
  */
 
-import {VOID_ELEMENTS, INLINE_ELEMENTS} from "./constants.js"
+import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, SPACE_AND_TAB} from "./constants.js"
 
 /**
  * Line number in the input string
@@ -22,8 +22,8 @@ let col = 0
  * @param string {string} String to convert
  */
 const convertReservedChar = (string) => {
+	// These are the only two characters that need to be replaced, modern browsers seem to be fine with other characters
 	const reserved = {
-		"&": "&amp;", // Has to be done first, otherwise it'll match the '&' in replaced text
 		"<": "&lt;",
 		">": "&gt;",
 	}
@@ -91,7 +91,10 @@ const parseStr = (str, char = "\"", convert = true) => {
 
 	while (remaining()) {
 		if (next() === "\\" && !escape) escape = true
-		else if (next() === char && !escape) break
+		else if (char.includes(next()) && !escape) {
+			if (next() === "]") index--
+			break
+		}
 		else if (next() === "\n") {
 			index++
 			col = 0
@@ -99,10 +102,7 @@ const parseStr = (str, char = "\"", convert = true) => {
 			if (char === "`") out += "\n"
 		}
 		else {
-			if (escape && next() !== char) {
-				out += "\\"
-				escape = false
-			}
+			escape = false
 			out += next()
 		}
 		index++
@@ -197,7 +197,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 		return {ok: [], err: null, rem: ""}
 	}
 	// check for string
-	if ("\"'`".includes(next())) {
+	if (LITERAL_DELIMITERS.includes(next())) {
 		let res = parseStr(src.slice(index, src.length), next(), str_replace)
 		if (res.err) {
 			return {ok: [], err: res.err, rem: ""}
@@ -258,34 +258,57 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 		return {ok: [{type: type, id: id, class: class_, attrs: ""}, {type: "close"}], err: null, rem: ""}
 	}
 	// check for attributes
-	// we cheat a bit here and treat everything in the brackets as valid HTML attributes
 	let attrs = "";
 	if (next() === "[") {
 		index++
 		col++
+
+
+		let attrsArr = []
+		let attrIndex = 0
+
 		while (remaining() && next() !== "]") {
-			switch (next()) {
-				case "\t":
-					attrs += " "
-					break
-				case "\n":
-					attrs += " "
-					col = 0
-					line++
+			if (next() === "=") {
+				let res
+				if (LITERAL_DELIMITERS.includes(src[index+1])) {
+					// Parse attribute contained in string
 					index++
-					continue
-				default:
-					attrs += next()
+					res = parseStr(src.slice(index, src.length), next(), false)
+				} else {
+					// Parse attribute
+					res = parseStr(src.slice(index, src.length), " \t]", false)
+				}
+				if (res.err) {
+					return {ok: [], err: res.err, rem: ""}
+				}
+				src = res.rem
+				index = -1
+				attrsArr[attrIndex] += `="${res.ok.value.replaceAll("\"", "&quot;")}"`
+				attrIndex++
+			}
+			else if (next() === "\n") {
+				attrIndex++
+				line++
+				col = 0
+			}
+			else if (SPACE_AND_TAB.includes(next())) {
+				attrIndex++
+				col++
+			}
+			else {
+				attrsArr[attrIndex] ? attrsArr[attrIndex] += next() : attrsArr[attrIndex] = next()
+				col++
 			}
 			index++
-			col++
 		}
+
 		if (!remaining() && next() !== "]") {
 			return {ok: [], err: "Unclosed attribute brackets", rem: ""}
 		}
 		index++
 		col++
-		class_ = class_.replaceAll(/[ +]/g, " ")
+
+		attrs = attrsArr.filter(a => a).join(" ")
 	}
 
 	if (VOID_ELEMENTS.includes(type)) {
@@ -299,7 +322,7 @@ const tokenise_inner = (src, default_tag, str_replace = true) => {
 	default_tag = INLINE_ELEMENTS.includes(type) ? "span" : "div"
 	str_replace = type !== "style"
 	// skip spaces and tabs
-	while (remaining() && " \t".includes(next())) {
+	while (remaining() && SPACE_AND_TAB.includes(next())) {
 		index++
 		col++
 	}

@@ -3,6 +3,17 @@
  */
 
 /**
+ * Characters that delimit text
+ */
+export const LITERAL_DELIMITERS = "\"'`"
+
+
+/**
+ * Spaces and tabs
+ */
+export const SPACE_AND_TAB = " \t"
+
+/**
  * Elements that are not allowed to have contents
  */
 export const VOID_ELEMENTS = [
