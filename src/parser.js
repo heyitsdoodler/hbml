@@ -42,8 +42,8 @@ const convertReservedChar = (string) => {
 
 /**
  * Parse comment
- * @param src {String} String to take comment from
- * @return {{ok: (Token | null), err: (String | null), rem: String}}
+ * @param src {string} String to take comment from
+ * @return {{ok: (Token | null), err: (string | null), rem: string}}
  */
 const parseComment = (src) => {
 	let out = ""
@@ -232,7 +232,7 @@ const getAttrs = (src, unique_replace, unique_position, initial) => {
  * Wrapper for the main tokeniser. Adds the doctype tag and not much else really
  * @param src {string} String to tokenise
  * @param path {string} Path to file to be tokenised. Used for error info
- * @return {{ok: (Object[] | null), err: (Error | null)}}
+ * @return {{ok: ((Object | string)[] | null), err: (Error | null)}}
  */
 export const tokenise = (src, path) => {
 	let tokens = []
@@ -257,9 +257,9 @@ export const tokenise = (src, path) => {
  *
  * This works by parsing the start of the tag, then parsing the inner section recursively, then checking for an ending tag
  *
- * The tag objects all have a type which is their HTML tag. If the type is `close`, that  represents a closing tag; if
- * the tag is `doctype` that represents the `<!DOCTYPE html>` at the start of the HTML file. All other can have an
- * `id`, `class`, and `attrs` value which are sef explanatory. Each of these are strings.
+ * The tag objects all have a type which is their HTML tag. If the tag is `!DOCTYPE` that represents the
+ * `<!DOCTYPE html>` at the start of the HTML file. All other can have an `id`, `class`, and `attrs` value which are
+ * self-explanatory. Each of these are strings.
  *
  * If an error is found, the error object will contain a `ln` and `col` value for the line and column where the error was found
  * @param src {string} String to tokenise
@@ -327,7 +327,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		type = default_tag
 	}
 	if (!remaining()) {
-		return {ok: [new Token(type, {}, {}, [])], err: null, rem: ""}
+		return {ok: [new Token(type, {}, {implicit: implicit}, [])], err: null, rem: ""}
 	}
 	let attrs = {}
 	// check for id
@@ -343,7 +343,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["id"] = id
 	}
 	if (!remaining()) {
-		return {ok: [new Token(type, attrs, {}, [])], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {"void": true, implicit: implicit}, [])], err: null, rem: ""}
 	}
 	// check for classes
 	if (next() === ".") {
@@ -356,7 +356,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["class"] = class_.replaceAll(".", " ").slice(1, class_.length)
 	}
 	if (!remaining()) {
-		return {ok: [new Token(type, attrs, {}, [])], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {"void": true, implicit: implicit}, [])], err: null, rem: ""}
 	}
 	// check for attributes
 	if (next() === "[") {
@@ -369,7 +369,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 	}
 
 	if (VOID_ELEMENTS.includes(type)) {
-		out.push(new Token(type, attrs, {"void": true}, []))
+		out.push(new Token(type, attrs, {"void": true, implicit: implicit}, []))
 		return {ok: out, err: null, rem: src.slice(index, src.length)}
 	}
 
@@ -383,10 +383,10 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		col++
 	}
 	if (!remaining()) {
-		out.push(new Token(type, attrs, []))
+		out.push(new Token(type, attrs, {implicit: implicit}, []))
 		return {ok: out, err: null, rem: src.slice(index, src.length)}
 	}
-	let additional = {}
+	let additional = {implicit: implicit}
 	// check if element has one inner or block inner
 	if (next() === ">") {
 		additional["inline"] = true
@@ -436,7 +436,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
  * Alias for tokenising and then stringifying input text
  * @param src {string} Input string
  * @param path {string} Input file path. User for error info
- * @return {{ok: (String | null), err: (Object | null )}}
+ * @return {{ok: (string | null), err: (Object | null )}}
  */
 export const fullStringify = (src, path) => {
 	line = 1

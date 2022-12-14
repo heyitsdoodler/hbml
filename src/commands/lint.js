@@ -159,8 +159,7 @@ const lint_internal = (paths, output, allow, lint_opts) => {
  * @param opts{Object} Lint options
  */
 const lint_file = (path, allow, opts) => {
-	let tokens;
-	const res = tokenise(fs.readFileSync(path.read).toString())
+	const res = tokenise(fs.readFileSync(path.read).toString(), path.read)
 	if (res.err) {
 		if (allow.parse) {
 			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))
@@ -170,50 +169,7 @@ const lint_file = (path, allow, opts) => {
 		}
 		return
 	}
-	// remove doctype tag included by default
-	tokens = res.ok.slice(1)
-	let ident = 0
-	let out = ""
-	let i = 0;
-	const stringify = (t) => {
-		const ident_str = opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])
-		switch (t.type) {
-			case "comment":
-				return `${ident_str}/* ${t.value} */\n`
-			case "string_literal":
-				return `${ident_str}"${t.value.replaceAll(`"`, `\\"`)}"\n`
-			case "close":
-				ident--
-				return `${opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])}}\n`
-			default:
-				const tag_full = `${t.implicit && !opts['lint.config.replace_implicit'] ? "" : t.type}${t.id ? `#${t.id}` : ""}${t.class ? `.${t.class.replaceAll(" ", ".")}` : ""}${t.attrs ? `[${t.attrs}]` : ""}`
-				if (t.void) {
-					return `${ident_str}${tag_full}\n`
-				}
-				let out = `${ident_str}${tag_full}${" ".repeat(tag_full ? opts['lint.config.pre_tag_space'] : 0)}` +
-					`${t.inline ? `>${" ".repeat(opts['lint.config.post_tag_space'])}` : "{"}`
-				if (t.inline) {
-					if (opts['lint.config.inline_same_line']) {
-						let temp = ident
-						ident = 0
-						out += stringify(tokens[i])
-						ident = temp
-					} else {
-						ident++
-						out += stringify(tokens[i])
-						ident--
-					}
-					// move over close bracket token
-					i++
-				} else {
-					ident++
-				}
-				return out + "\n"
-		}
-	}
-	for (i = 0; i < tokens.length; i++) {
-		out += stringify(tokens[i])
-	}
+	const out = res.ok.map((t) => typeof t === "object" ? t.lint(0, false, opts) : t).join("\n")
 	fs.writeFile(path.write, out, (write_err) => {
 		if (write_err) {
 			if (allow.write) {
@@ -224,5 +180,4 @@ const lint_file = (path, allow, opts) => {
 			}
 		}
 	})
-	// write out to file
 }
