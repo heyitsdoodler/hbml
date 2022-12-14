@@ -327,7 +327,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		type = default_tag
 	}
 	if (!remaining()) {
-		return {ok: [{type: type, id: "", class: "", attrs: {}, implicit: implicit}, {type: "close"}], err: null, rem: ""}
+		return {ok: [new Token(type, {}, {}, [])], err: null, rem: ""}
 	}
 	let attrs = {}
 	// check for id
@@ -343,7 +343,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["id"] = id
 	}
 	if (!remaining()) {
-		return {ok: [{type: type, id: id, class: "", attrs: {}}, {type: "close"}], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {}, [])], err: null, rem: ""}
 	}
 	// check for classes
 	if (next() === ".") {
@@ -356,7 +356,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["class"] = class_.replaceAll(".", " ").slice(1, class_.length)
 	}
 	if (!remaining()) {
-		return {ok: [{type: type, id: id, class: class_, attrs: {}}, {type: "close"}], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {}, [])], err: null, rem: ""}
 	}
 	// check for attributes
 	if (next() === "[") {
