@@ -48,7 +48,7 @@ export class Token {
 	 */
 	lint(ident, inline, opts) {
 		opts['lint.config.replace_implicit'] = false
-		const ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
+		let ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
 		if (this.type === "comment") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
 		const reduces_attrs = Object.entries(this.attributes).filter(([k, _]) => k !== "id" && k !== "class")
 		const modified_attrs = Object.keys(reduces_attrs).length > 0 ? reduces_attrs.reduce((acc, [k, v]) => v === true ? `${acc} ${k}` : `${acc} ${k}="${v.replaceAll('"', '\\"')}"`, "").slice(1) : ""
@@ -64,8 +64,9 @@ export class Token {
 			const child = this.children.pop()
 			out += typeof child === "string" ? `"${child}"` : child.lint(ident, true, opts)
 		} else {
+			ident_str = opts['lint.config.indent.character'].repeat(ident * opts['lint.config.indent.count'])
 			out += this.children.reduce((acc, child) => {
-				return acc + (typeof child === "string" ? `${ident_str}"${child}"\n` : child.lint(ident + 1, false, opts))
+				return acc + (typeof child === "string" ? `${ident_str}${opts['lint.config.indent.character']}"${child}"\n` : child.lint(ident + 1, false, opts))
 			}, "")
 			if (!this.additional["inline"]) out += `${ident_str}}`
 		}
