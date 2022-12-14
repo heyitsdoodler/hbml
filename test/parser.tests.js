@@ -1,10 +1,8 @@
 import {strictEqual as equal} from "assert"
 import {fullStringify} from "../src/parser.js";
 
-
-
-const p = (src) => {
-    const {ok, err} = fullStringify(src, "./test")
+const p = (src, ) => {
+    const {ok, err} = fullStringify(src, "test env")
     return err ? err : ok
 }
 
@@ -80,7 +78,7 @@ describe("Testing HBML: parser.js", () => {
         })
         it("Attributes", () => {
             equal(p("span[style=color:red;] > 'Text'"), `<span style="color:red;">Text</span>`)
-            equal(p("#my-id.class.class2[data-attribute]'"), `<div id="my-id" class="class class2" data-attribute></div>`)
+            equal(p("#my-id.class.class2[data-attribute]"), `<div id="my-id" class="class class2" data-attribute></div>`)
             equal(p("link[href=https://cool-website.com/]\n" +
                 "        link[rel=stylesheet href=./local-styles/style.css]\n" +
                 "        meta[charset=\"UTF-8\"]\n" +
