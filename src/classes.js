@@ -47,7 +47,6 @@ export class Token {
 	 * @return {string}
 	 */
 	lint(ident, inline, opts) {
-		opts['lint.config.replace_implicit'] = false
 		let ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
 		if (this.type === "comment") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
 		const reduces_attrs = Object.entries(this.attributes).filter(([k, _]) => k !== "id" && k !== "class")
