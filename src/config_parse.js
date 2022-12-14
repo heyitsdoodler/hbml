@@ -62,9 +62,12 @@ const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
  * Default config values
  * @type {Object}
  */
-export const defs = {
+export const CONFIG_DEFAULTS = {
 	'lint.src': [ '/' ],
 	'lint.output': '/',
+	'lint.allow.not_found': false,
+	'lint.allow.write': false,
+	'lint.allow.parse': false,
 	'lint.config.indent.character': '\t',
 	'lint.config.indent.count': 1,
 	'lint.config.pre_tag_space': 1,
@@ -91,5 +94,5 @@ export const getConfig = () => {
 	if (!fs.existsSync(conf_path)) return {ok: null, err: "Config file hbml.json not found in cwd"}
 	const parsed = parse(fs.readFileSync(conf_path).toString())
 	if (parsed === undefined) return {ok: null, err: parse.message}
-	return {ok: {...defs, ...flatten(parsed)}, err: null}
+	return {ok: {...CONFIG_DEFAULTS, ...flatten(parsed)}, err: null}
 }

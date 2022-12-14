@@ -26,8 +26,8 @@ export const build_runner = (args, project) => {
 			process.exit(1)
 		}
 		files = conf_res.ok["build.src"]
-		out = conf_res.ok["build.out"]
-		allow = conf_res.ok["build.allow"]
+		out = conf_res.ok["build.output"]
+		Object.keys(allow).forEach((k) => allow[k] = conf_res.ok[`build.allow.${k}`])
 	} else {
 		// get files to build
 		files = args["_"];
@@ -174,9 +174,9 @@ const parse_file = (path, allow) => {
 		const {ok, err} = fullStringify(data.toString(), path.read)
 		if (err) {
 			if (allow.parse) {
-				console.log(chalk.yellow(`Unable to parse file ${path.write}(${err.desc})! Skipping over file`))
+				console.log(chalk.yellow(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Skipping over file`))
 			} else {
-				console.log(chalk.red(`Unable to parse file ${path.write}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
+				console.log(chalk.red(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
 				process.exit(1)
 			}
 			return

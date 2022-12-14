@@ -1,8 +1,8 @@
-import {defs, getConfig} from "../config_parse.js";
+import {CONFIG_DEFAULTS, getConfig} from "../config_parse.js";
 import chalk from "chalk";
 import npath from "path";
 import fs from "fs";
-import {tokenise} from "../parser.js";
+import {Parser} from "../classes.js";
 
 export const lint_runner = (args, project) => {
 	// help flags
@@ -12,7 +12,7 @@ export const lint_runner = (args, project) => {
 	let files
 	let out
 	let allow = {write: false, not_found: false, parse: false}
-	let conf = defs
+	let conf = CONFIG_DEFAULTS
 	if (project) {
 		const conf_res = getConfig()
 		if (conf_res.err) {
@@ -21,7 +21,7 @@ export const lint_runner = (args, project) => {
 		}
 		files = conf_res.ok["lint.src"]
 		out = conf_res.ok["lint.output"]
-		Object.keys(allow).forEach((k) => allow[k] = conf_res.ok[`build.${k}`])
+		Object.keys(allow).forEach((k) => allow[k] = conf_res.ok[`build.allow.${k}`])
 		conf = conf_res.ok
 	} else {
 		// get files to build
@@ -60,11 +60,24 @@ export const lint_runner = (args, project) => {
 					allow.parse = true
 					break
 				default:
-					console.log(chalk.red(`Unknown allow value ${s}! See 'hbml lint -h' for help`))
+					console.log(chalk.red(`Unknown allow value ${s}!\nSee 'hbml lint -h' for help`))
 					process.exit(1)
 			}
 		})
 		delete args["s"]
+		const expected_keys = Object.keys(CONFIG_DEFAULTS)
+		let given_keys = Object.keys(args).filter((k) => !expected_keys.includes(`lint.config.${k}`))
+		if (Object.keys(given_keys).length !== 0) {
+			console.log(chalk.red(`Unknown argument${Object.keys(given_keys) ? "s":""}: ${given_keys.map((k) => `--${k}`).join(" ")}!\nCheck the config file docs for help`))
+			process.exit(1)
+		}
+		Object.entries(args).forEach(([k, v]) => {
+			if (typeof conf[`lint.config.${k}`] === typeof v) conf[`lint.config.${k}`] = v
+			else {
+				console.log(chalk.red(`Incorrect type for argument --${k}! Expected ${typeof conf[`lint.config.${k}`]} found ${typeof v}!\nCheck the config file docs for help`))
+				process.exit(1)
+			}
+		})
 	}
 	// check no unexpected args were given
 	if (Object.keys(args).length !== 0) {
@@ -159,7 +172,8 @@ const lint_internal = (paths, output, allow, lint_opts) => {
  * @param opts{Object} Lint options
  */
 const lint_file = (path, allow, opts) => {
-	const res = tokenise(fs.readFileSync(path.read).toString(), path.read)
+	const parser = new Parser(fs.readFileSync(path.read).toString(), path.read)
+	const res = parser.parse()
 	if (res.err) {
 		if (allow.parse) {
 			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))
