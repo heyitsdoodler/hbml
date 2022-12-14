@@ -157,6 +157,19 @@ describe("Testing HBML: parser.js", () => {
             `), `<table id="test-id"><thead><tr><th>Column 1</th><th>Column 2</th></tr></thead><tbody><tr><td>Row 1</td><td>Value 1</td></tr><tr><td>Row 2</td><td>Value 2</td></tr></tbody></table>`)
 
         })
+        it(":child-at(<index>)", () => {
+            equal(p(`
+            --index {
+                p > :child-at(1)
+                p > :child-at(0)
+                p > :child
+                p > :child-at(0)
+                p > :children
+                p > :child-at(2)
+            }
+            :index {"Text 1" "Text 2" "Text 3"}
+            `), `<p>Text 2</p><p>Text 1</p><p>Text 1</p><p>Text 1</p><p>Text 2Text3</p><p>Text 3</p>`)
+        })
         it(":consume and :consume-all", () => {
             equal(p(`
             --list {
@@ -180,6 +193,14 @@ describe("Testing HBML: parser.js", () => {
             :list {"Heading" "Text 1"}
             :list {"Heading" "Text 1" "Text 2" "Text 3"}
             `), `<h2>Heading</h2><ul><li>Text 1</li></ul><h2>Heading</h2><ul><li>Text 1</li><li>Text 2</li><li>Text 3</li></ul>`)
+        })
+        it("Imports", () => {
+            equal(p(`@import ./importable_macros
+            :external-macro`), `Hello, world!`)
+            equal(p(`@import ./importable_macros.hbml
+            :external-macro2`), `<h1>Hello, world!</h1>`)
+            equal(p(`@import ./importable_macros.hbml namespace
+            :namespace:external-macro`), `Hello, world!`)
         })
 
         describe("Built-in validation", () => {
