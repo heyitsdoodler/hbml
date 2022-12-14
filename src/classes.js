@@ -30,7 +30,7 @@ export class Token {
 			case "comment":
 				return `<!--${this.additional.value}-->`
 			default:
-				const attrs = Object.keys(this.attributes).length === 0 ? "" : Object.entries(this.attributes)
+				const attrs = Object.keys(this.attributes).length === 0 ? "" : " " + Object.entries(this.attributes)
 					.reduce((acc, [k, v]) => v === true ? `${acc} ${k}` : `${acc} ${k}="${v}"`, "").slice(1)
 				if (this.additional["void"]) return `<${this.type}${attrs}${this.type === "!DOCTYPE" ? "" : "/"}>`
 				return `<${this.type}${attrs}>${

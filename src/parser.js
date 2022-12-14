@@ -343,7 +343,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["id"] = id
 	}
 	if (!remaining()) {
-		return {ok: [new Token(type, attrs, {"void": true, implicit: implicit}, [])], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {implicit: implicit}, [])], err: null, rem: ""}
 	}
 	// check for classes
 	if (next() === ".") {
@@ -356,7 +356,7 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 		attrs["class"] = class_.replaceAll(".", " ").slice(1, class_.length)
 	}
 	if (!remaining()) {
-		return {ok: [new Token(type, attrs, {"void": true, implicit: implicit}, [])], err: null, rem: ""}
+		return {ok: [new Token(type, attrs, {implicit: implicit}, [])], err: null, rem: ""}
 	}
 	// check for attributes
 	if (next() === "[") {
