@@ -314,10 +314,10 @@ const tokenise_inner = (src, default_tag, str_replace, macros) => {
 	// check for tag name
 	let type;
 	let implicit;
-	if (!">#.{[>".includes(next())) {
+	if (!">#.{[>}".includes(next())) {
 		implicit = false
 		type = ""
-		while (remaining() && !"#. \t\n\"'`/>{[".includes(next())) {
+		while (remaining() && !"#. \t\n\"'`/>{[}".includes(next())) {
 			type += next()
 			index++
 			col++
