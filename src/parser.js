@@ -56,6 +56,7 @@ const parseComment = (src) => {
 
 	while (true) {
 		if (index === src.length) {
+			if (!multiline) break
 			return {ok: null, err: "Expected end of comment! Found EOF", rem: ""}
 		}
 		const next = src[index]
@@ -103,7 +104,6 @@ const parseStr = (str, char = "\"", convert = true) => {
 			break
 		}
 		else if (next() === "\n") {
-			index++
 			col = 0
 			line++
 			if (char === "`") out += "\n"
@@ -117,7 +117,7 @@ const parseStr = (str, char = "\"", convert = true) => {
 	}
 	index++
 	col++
-
+	
 	return {
 		ok: convert ? convertReservedChar(out) : out,
 		err: null,
@@ -446,5 +446,5 @@ export const fullStringify = (src, path) => {
 	if (err) {
 		return {ok: null, err: err}
 	}
-	return {ok: ok.map((t) => t.toString()).join("/n"), err: null}
+	return {ok: ok.map((t) => t.toString()).join(""), err: null}
 }
