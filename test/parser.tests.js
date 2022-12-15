@@ -180,6 +180,43 @@ describe("Testing HBML: parser.js", () => {
             `), `<table id="test-id"><thead><tr><th>Column 1</th><th>Column 2</th></tr></thead><tbody><tr><td>Row 1</td><td>Value 1</td></tr><tr><td>Row 2</td><td>Value 2</td></tr></tbody></table>`)
 
         })
+        it(":unwrap-child", () => {
+            equal(p(`
+            --better-root > :root {
+                :consume > head > :unwrap-child
+                :consume > body > :unwrap-child
+                :child
+            }
+            
+            :better-root {
+                {
+                    title > "Page title"
+                }
+                {
+                    h1 > "Heading Level 1"
+                    div {
+                        p > "content in a paragraph"
+                    }
+                }
+            }
+            `), `<!DOCTYPE html><html lang="en"><head><title>Page title</title></head><body><h1>Heading Level 1</h1><div><p>content in a paragraph</p></div></body></html>`)
+
+            equal(p(`
+            --merge > {:consume-all > :unwrap-child}       
+            :merge {
+                {
+                    p > "paragraph in first div"
+                }
+                {
+                    p > "first paragraph in second div"
+                    p > "second paragraph in second div"
+                }
+                {
+                    p > "paragraph in third div"
+                }
+            }
+            `), `<div><p>paragraph in first div</p><p>first paragraph in second div</p><p>second paragraph in second div</p><p>paragraph in third div</p></div>`)
+        })
         it(":consume and :consume-all", () => {
             equal(p(`
             --list {

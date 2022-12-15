@@ -1,7 +1,7 @@
 /**
  * # HBML Parser
  *
- * Contains a {@link Token.pa tokeniser} to turn text into {@link Token tokens} which can then be turned into HTML or
+ * Contains a {@link Token tokeniser} to turn text into {@link Token tokens} which can then be turned into HTML or
  * linted by internal functions ({@link Token.stringify HTML} {@link Token.lint lint}). We also provide a
  * {@link fullStringify} function to handle tokenising and strinigifying source text into HTML
  */
@@ -282,8 +282,6 @@ Parser.prototype.parse = function () {
 	return {ok: tokens, err: null}
 }
 
-Parser
-
 /**
  * ### Tokenises an input string
  *
@@ -331,7 +329,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 
 	// check if the tag is a macro
 	let macro = undefined
-	if (type[0] === ":" && ![":child", ":children", ":consume", ":consume-all"].includes(type)) {
+	if (type[0] === ":" && ![":child", ":unwrap-child", ":children", ":consume", ":consume-all"].includes(type)) {
 		// try to get macro
 		type = type.slice(1)
 		if (!type) return {ok: null, err: "Macro cannot have an empty name"}
