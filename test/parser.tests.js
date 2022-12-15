@@ -50,6 +50,9 @@ describe("Testing HBML: parser.js", () => {
     describe("Elements", () => {
         it("Blocks", () => {
             equal(p("div {}"), "<div></div>")
+            equal(p("div>p"), "<div><p></p></div>")
+            equal(p("div> p"), "<div><p></p></div>")
+            equal(p("div > p"), "<div><p></p></div>")
             equal(p("div{}"), "<div></div>")
             equal(p("div { }"), "<div></div>")
             equal(p("div {\n}"), "<div></div>")
@@ -111,6 +114,8 @@ describe("Testing HBML: parser.js", () => {
         it("Simple replacements", () => {
             equal(p("--macro-string > 'Hello, world!' :macro-string"), "Hello, world!")
             equal(p("--macro-multi-string { 'Hello,'' world!' } :macro-multi-string"), "Hello, world!")
+            equal(p("--macro-multi-string > { 'Hello,'' world!' } :macro-multi-string"), "<div>Hello, world!</div>")
+            equal(p("--macro-multi-string {{ 'Hello,'' world!'}} :macro-multi-string"), "<div>Hello, world!</div>")
             equal(p("--nested-divs { {} {{}} } :nested-divs"), "<div></div><div><div></div></div>")
             equal(p("--nested-divs > { {} {{}} } :nested-divs"), "<div><div></div><div><div></div></div></div>")
 
