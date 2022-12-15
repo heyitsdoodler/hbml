@@ -111,7 +111,8 @@ describe("Testing HBML: parser.js", () => {
         it("Simple replacements", () => {
             equal(p("--macro-string > 'Hello, world!' :macro-string"), "Hello, world!")
             equal(p("--macro-multi-string { 'Hello,'' world!' } :macro-multi-string"), "Hello, world!")
-            equal(p("--nested-divs { {} {{}} } :nested-divs"), "<div><div></div><div><div></div></div></div>")
+            equal(p("--nested-divs { {} {{}} } :nested-divs"), "<div></div><div><div></div></div>")
+            equal(p("--nested-divs > { {} {{}} } :nested-divs"), "<div><div></div><div><div></div></div></div>")
 
             equal(p(`--head-base {
                     script[src=script1.js]
