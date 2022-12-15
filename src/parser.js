@@ -125,7 +125,7 @@ Parser.prototype.parseAttrs = function (unique_replace, unique_position, initial
 						attrsObj[key] = value
 						break
 					case 1:
-						console.log(chalk.yellow(`Duplicate unique value found (${attrsObj[key]} and ${value}) ${file} ${line}:${col}`));
+						console.log(chalk.yellow(`Duplicate unique value found (${attrsObj[key]} and ${value}) ${this.file} ${this.line}:${this.col}`));
 						attrsObj[key] = value
 						break
 					default:
@@ -281,6 +281,8 @@ Parser.prototype.parse = function () {
 
 	return {ok: tokens, err: null}
 }
+
+Parser
 
 /**
  * ### Tokenises an input string

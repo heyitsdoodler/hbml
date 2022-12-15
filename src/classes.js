@@ -225,6 +225,11 @@ export class Token {
 		}
 	}
 
+	/**
+	 * Clones a token. Required when expanding macros to ensure the returned token(s) are separate from the tokens
+	 * contained by the macro
+	 * @return {Token} Cloned token
+	 */
 	clone() {
 		return new Token(
 			this.type,
