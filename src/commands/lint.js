@@ -172,8 +172,7 @@ const lint_internal = (paths, output, allow, lint_opts) => {
  * @param opts{Object} Lint options
  */
 const lint_file = (path, allow, opts) => {
-	const parser = new Parser(fs.readFileSync(path.read).toString(), path.read)
-	const res = parser.parse()
+	const res = new Parser(fs.readFileSync(path.read).toString(), path.read, false).parse()
 	if (res.err) {
 		if (allow.parse) {
 			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))

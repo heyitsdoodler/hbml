@@ -6,15 +6,16 @@
  * {@link fullStringify} function to handle tokenising and strinigifying source text into HTML
  */
 
-import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, SPACE_AND_TAB, UNIQUE_ATTRS} from "./constants.js"
+import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
+import "./macros.js"
 
 /**
  * Convert reserved HTML characters to their corresponding entities
  * @param string {string} String to convert
  */
-Parser.prototype.convertReservedChar = function(string) {
+Parser.prototype.convertReservedChar = function (string) {
 	// These are the only two characters that need to be replaced, modern browsers seem to be fine with other characters
 	const reserved = {
 		"<": "&lt;",
@@ -29,7 +30,7 @@ Parser.prototype.convertReservedChar = function(string) {
  * Parse comment
  * @return {{ok: (Token | null), err: (string | null)}}
  */
-Parser.prototype.parseComment = function() {
+Parser.prototype.parseComment = function () {
 	let out = ""
 
 	const multiline = this.src[1] === "*"
@@ -71,7 +72,7 @@ Parser.prototype.parseComment = function() {
  * @param convert {boolean} Convert string via {@link convertReservedChar}
  * @return {{ok: (string | null), err: (string | null)}}
  */
-Parser.prototype.parseStr = function(char = "\"", convert = true) {
+Parser.prototype.parseStr = function (char = "\"", convert = true) {
 	this.index++
 	this.col++
 	let out = ""
@@ -112,7 +113,7 @@ Parser.prototype.parseStr = function(char = "\"", convert = true) {
  * @param initial {Object} Initial attributes
  * @return {{ok: (Object | null), err: (null | string)}}
  */
-Parser.prototype.parseAttrs = function(unique_replace, unique_position, initial) {
+Parser.prototype.parseAttrs = function (unique_replace, unique_position, initial) {
 	let attrsObj = initial
 
 	const insertValue = (key, value) => {
@@ -196,7 +197,7 @@ Parser.prototype.parseAttrs = function(unique_replace, unique_position, initial)
  * @param default_tag{string} default tag if the tag is implicit
  * @return {{ok: ({type: string, attrs: Object, additional: Object} | null), err: (null | string)}}
  */
-Parser.prototype.parseTag = function(default_tag) {
+Parser.prototype.parseTag = function (default_tag) {
 	let type;
 	let implicit;
 	if (!">#.{[>}".includes(this.next())) {
@@ -241,7 +242,10 @@ Parser.prototype.parseTag = function(default_tag) {
 		}
 		attrs["class"] = class_.replaceAll(".", " ").slice(1)
 	}
-	if (!this.remaining()) return {ok: {type: type, attrs: attrs, additional: {void: isVoid, implicit: implicit}}, err: null}
+	if (!this.remaining()) return {
+		ok: {type: type, attrs: attrs, additional: {void: isVoid, implicit: implicit}},
+		err: null
+	}
 
 	// check for attributes
 	if (this.next() === "[") {
@@ -261,20 +265,17 @@ Parser.prototype.parseTag = function(default_tag) {
  * Wrapper for the main tokeniser. Adds the doctype tag and not much else really
  * @return {{ok: ((Object | string)[] | null), err: (Error | null)}}
  */
-Parser.prototype.parse = function() {
+Parser.prototype.parse = function () {
 	let tokens = []
-	let macros = [[{
-		"root": new Macro([
-			new Token("!DOCTYPE", {html: true}, []),
-			new Token("html", {}, {":children": true}, [new Token(":children", {}, [])])
-		], false)
-	}]]
 
 	while (this.remaining()) {
 		let previous = this.src
-		const {ok, err} = this.parse_inner("div", true, macros)
+		const {ok, err} = this.parse_inner("div", true)
 		if (err) return {ok: null, err: new Error(err, this.path, this.ln, this.col)}
-		if (previous === this.src) return {ok: null, err: new Error("Unable to parse remaining text", this.path, this.ln, this.col)}
+		if (previous === this.src) return {
+			ok: null,
+			err: new Error("Unable to parse remaining text", this.path, this.ln, this.col)
+		}
 		if (ok !== null) tokens = [...tokens, ok]
 	}
 
@@ -293,10 +294,9 @@ Parser.prototype.parse = function() {
  * If an error is found, the error object will contain a `ln` and `col` value for the line and column where the error was found
  * @param default_tag {string} Default tag to use when no other is given
  * @param str_replace {boolean} Pass any string through the {@link convertReservedChar} function
- * @param macros {Object[][]} Macro arrays
  * @return {{ok: (Token | string | null), err: (string | null)}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
  */
-Parser.prototype.parse_inner = function(default_tag, str_replace, macros) {
+Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	// move over "blank" characters
 	this.stn()
 	if (this.next() === "}") {
@@ -309,6 +309,11 @@ Parser.prototype.parse_inner = function(default_tag, str_replace, macros) {
 		let res = this.parseStr(this.next(), str_replace)
 		if (res.err) return {ok: null, err: res.err}
 		return {ok: res.ok, err: null}
+	}
+	//check for macro def
+	if (this.next() === "-" && this.src[this.index + 1] === "-") {
+		this.index += 2
+		this.macro()
 	}
 	// check for comment
 	if (this.next() === "/") {
@@ -340,7 +345,7 @@ Parser.prototype.parse_inner = function(default_tag, str_replace, macros) {
 		this.index++
 		this.col++
 		this.update_src()
-		let res = this.parse_inner(default_tag, str_replace, macros)
+		let res = this.parse_inner(default_tag, str_replace)
 		if (res.err) return {ok: null, err: res.err}
 		if (res.ok !== null) children = [...children, res.ok]
 	} else if (this.next() === "{") {
@@ -348,7 +353,7 @@ Parser.prototype.parse_inner = function(default_tag, str_replace, macros) {
 		this.col++
 		this.update_src()
 		while (this.remaining() && this.next() !== "}") {
-			let res = this.parse_inner(default_tag, str_replace, macros)
+			let res = this.parse_inner(default_tag, str_replace)
 			if (res.err) return {ok: null, err: res.err, rem: ""}
 			if (res.ok !== null) children = [...children, res.ok]
 			this.stn()
@@ -368,8 +373,8 @@ Parser.prototype.parse_inner = function(default_tag, str_replace, macros) {
  * @param path {string} Input file path. User for error info
  * @return {{ok: (string | null), err: (Object | null )}}
  */
-export const fullStringify = function(src, path) {
-	const {ok, err} = new Parser(src, path).parse()
+export const fullStringify = function (src, path) {
+	const {ok, err} = new Parser(src, path, true).parse()
 	if (err) {
 		return {ok: null, err: err}
 	}

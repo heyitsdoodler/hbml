@@ -55,7 +55,10 @@ const schema = {
  */
 const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
 	...q,
-	...(v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(flatten(v)).reduce((p, [j, i]) => ({...p, [k + '.' + j]: i}), {}) : {[k]: v})
+	...(v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(flatten(v)).reduce((p, [j, i]) => ({
+		...p,
+		[k + '.' + j]: i
+	}), {}) : {[k]: v})
 }), {});
 
 /**
@@ -63,7 +66,7 @@ const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
  * @type {Object}
  */
 export const CONFIG_DEFAULTS = {
-	'lint.src': [ '/' ],
+	'lint.src': ['/'],
 	'lint.output': '/',
 	'lint.allow.not_found': false,
 	'lint.allow.write': false,
@@ -75,7 +78,7 @@ export const CONFIG_DEFAULTS = {
 	'lint.config.inline_same_line': true,
 	'lint.config.keep_implicit': true,
 	'lint.config.void_inline': true,
-	'build.src': [ '/' ],
+	'build.src': ['/'],
 	'build.output': 'html',
 	'build.allow.not_found': false,
 	'build.allow.write': false,

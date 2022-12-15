@@ -1,22 +1,31 @@
 /**
  * All the classes. Contains {@link Parser}, {@link Token}, {@link Macro}, and {@link Error}
  */
-import "./parser.js"
 
 export class Parser {
-	constructor(src, path) {
+	constructor(src, path, build) {
 		this.src = src
 		this.path = path
 		this.ln = 1
 		this.col = 1
 		this.index = 0
+		this.macro = build ? this.macro_build : this.macro_lint
+		this.macros = [{
+			"root": new Macro([
+				new Token("!DOCTYPE", {html: true}, []),
+				new Token("html", {}, {"child count": 0, "children": true}, [new Token(":children", {}, [])])
+			], false)
+		}]
 	}
-	next = function() {
+
+	next = function () {
 		return this.src[this.index]
 	}
+
 	remaining() {
 		return this.index < this.src.length
 	}
+
 	/**
 	 * Skip space tab newline
 	 */
@@ -36,6 +45,7 @@ export class Parser {
 		}
 		if (!this.remaining()) this.update_src()
 	}
+
 	/**
 	 * Skip space tab
 	 */
@@ -51,6 +61,7 @@ export class Parser {
 		}
 		if (!this.remaining()) this.update_src()
 	}
+
 	/**
 	 * Slices `this.src` to  and resets `this.index`
 	 */
@@ -137,6 +148,78 @@ export class Token {
 		}
 		return out + (inline ? "" : "\n")
 	}
+
+	/**
+	 * Recursively counts the number of `:child` child elements under an element. Used for macros
+	 */
+	count_child() {
+		let child_count = 0
+		let isVoid = true
+		let children = false
+		this.children = this.children.map((child) => {
+			if (typeof child !== "string") {
+				if (child.type === ":child") {
+					child_count++
+					isVoid = false
+				} else if (child.type === ":children") this.additional["children"] = true
+				else {
+					const res = child.count_child()
+					child = res.tok
+					if (!children) children = child.additional["children"]
+					if ([":consume", ":consume-all"].includes(child.type)) {
+						if (isVoid) isVoid = child.additional["child count"] > 0
+					} else child_count += child.additional["child count"]
+				}
+			}
+			return child
+		})
+		this.additional["child count"] = child_count
+		this.additional["children"] = children
+		return {tok: this, isVoid: isVoid}
+	}
+
+	/**
+	 * Replace elements with macro expanded elements. Called by a macro expansion
+	 * @param elements {(Token | string)[]}
+	 * @return {{expand: (Token | string)[], rem: (Token | string)[]}}
+	 */
+	replace(elements) {
+		switch (this.type) {
+			case ":child":
+				const child = elements.pop()
+				return {expand: [child ? child : ""], rem: elements}
+			case ":children":
+				elements.reverse()
+				return {expand: elements, rem: []}
+			case ":consume":
+				if (elements.length >= this.additional["child count"]) {
+					return this.children.reduce((acc, tok) => {
+						if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
+						const res = tok.replace(acc.rem)
+						return {expand: [...acc.expand, ...res.expand], rem: res.rem}
+					}, {expand: [], rem: elements})
+				} else return {expand: [], rem: elements}
+			case ":consume-all":
+				if (elements.length >= this.additional["child count"]) {
+					let holdover = {expand: [], rem: elements}
+					while (elements.length >= this.additional["child count"]) {
+						holdover = this.children.reduce((acc, tok) => {
+							if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
+							const res = tok.replace(acc.rem)
+							return {expand: [...acc.expand, ...res.expand], rem: res.rem}
+						}, holdover)
+					}
+					return holdover
+				} else return {expand: [], rem: elements}
+			default:
+				const inner = this.children.reduce((acc, tok) => {
+					if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
+					const res = tok.replace(acc.rem)
+					return {expand: [...acc.expand, ...res.expand], rem: res.rem}
+				}, {expand: [], rem: elements})
+				return {expand: [new Token(this.type, this.attributes, this.additional, inner.expand)], rem: inner.rem}
+		}
+	}
 }
 
 export class Macro {
@@ -153,11 +236,17 @@ export class Macro {
 
 	/**
 	 * Replace elements with a macro expansion. Requires the macro inputs to be nested objects not a token stream
-	 * @param elements {Token[]}
-	 * @return {Token[]}
+	 * @param elements {(Token | string)[]}
+	 * @return {(Token | string)[]}
 	 */
 	replace(elements) {
-
+		elements.reverse()
+		return this.rep.reduce((acc, child) => {
+			if (typeof child === "string") return [...acc, child]
+			const res = child.replace(elements)
+			elements = res.rem
+			return [...acc, ...res.expand]
+		}, [])
 	}
 }
 
@@ -168,6 +257,7 @@ export class Error {
 		this.ln = ln
 		this.col = col
 	}
+
 	toString() {
 		`${this.desc} ${this.file} ${this.ln}:${this.col}`
 	}
