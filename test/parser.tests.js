@@ -125,6 +125,23 @@ describe("Testing HBML: parser.js", () => {
                 } :head-base.class`),
                 `<script src="script1.js" class="class"></script><link rel="stylesheet" href="style.css" class="class"/>`)
         })
+        it("Scopes", () => {
+            equal(p(`--scope > {"Global"}
+                :scope
+                :root {
+                    :scope
+                    --scope > {":root"}
+                    section {
+                        :scope
+                        --scope > {"section"}
+                        :scope
+                    }
+                    :scope
+                }
+                :scope
+                `),
+                `<div>Global</div><!DOCTYPE html><html lang="en"><div>Global</div><section><div>:root</div><div>section</div></section><div>:root</div></html><div>Global</div>`)
+        })
         it(":child and :children", () => {
             equal(p(`
             --list {
@@ -162,19 +179,6 @@ describe("Testing HBML: parser.js", () => {
             }
             `), `<table id="test-id"><thead><tr><th>Column 1</th><th>Column 2</th></tr></thead><tbody><tr><td>Row 1</td><td>Value 1</td></tr><tr><td>Row 2</td><td>Value 2</td></tr></tbody></table>`)
 
-        })
-        it(":child-at(<index>)", () => {
-            equal(p(`
-            --index {
-                p > :child-at(1)
-                p > :child-at(0)
-                p > :child
-                p > :child-at(0)
-                p > :children
-                p > :child-at(2)
-            }
-            :index {"Text 1" "Text 2" "Text 3"}
-            `), `<p>Text 2</p><p>Text 1</p><p>Text 1</p><p>Text 1</p><p>Text 2Text3</p><p>Text 3</p>`)
         })
         it(":consume and :consume-all", () => {
             equal(p(`
