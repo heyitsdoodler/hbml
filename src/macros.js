@@ -12,7 +12,7 @@ Parser.prototype.macro_build = function () {
 	let {ok, err} = this.parse_inner("div", false)
 	if (err) return {ok: null, err: err}
 	// get required macro info
-	const count_res = ok.count_child()
+	const count_res = ok[0].count_child()
 	ok = count_res.tok
 	this.macros[this.macros.length - 1][ok.type] = new Macro(ok.children, count_res.isVoid)
 	return {ok: null, err: null}

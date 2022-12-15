@@ -1,6 +1,7 @@
 /**
  * All the classes. Contains {@link Parser}, {@link Token}, {@link Macro}, and {@link Error}
  */
+import {UNIQUE_ATTRS} from "./constants.js";
 
 export class Parser {
 	constructor(src, path, build) {
@@ -12,8 +13,8 @@ export class Parser {
 		this.macro = build ? this.macro_build : this.macro_lint
 		this.macros = [{
 			"root": new Macro([
-				new Token("!DOCTYPE", {html: true}, []),
-				new Token("html", {}, {"child count": 0, "children": true}, [new Token(":children", {}, [])])
+				new Token("!DOCTYPE", {html: true}, {}, []),
+				new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
 			], false)
 		}]
 	}
@@ -98,6 +99,8 @@ export class Token {
 				return this.additional.value
 			case "c t":
 				return `<!--${this.additional.value}-->`
+			case "!DOCTYPE":
+				return '<!DOCTYPE html>'
 			default:
 				const attrs = Object.keys(this.attributes).length === 0 ? "" : " " + Object.entries(this.attributes)
 					.reduce((acc, [k, v]) => v === true ? `${acc} ${k}` : `${acc} ${k}="${v}"`, "").slice(1)
@@ -161,14 +164,15 @@ export class Token {
 				if (child.type === ":child") {
 					child_count++
 					isVoid = false
-				} else if (child.type === ":children") this.additional["children"] = true
-				else {
+				} else if (child.type === ":children") {
+					this.additional["children"] = true
+					isVoid = false
+				} else {
 					const res = child.count_child()
 					child = res.tok
 					if (!children) children = child.additional["children"]
-					if ([":consume", ":consume-all"].includes(child.type)) {
-						if (isVoid) isVoid = child.additional["child count"] > 0
-					} else child_count += child.additional["child count"]
+					if (isVoid) isVoid = res.isVoid
+					if (![":consume", ":consume-all"].includes(child.type)) child_count += child.additional["child count"]
 				}
 			}
 			return child
@@ -220,6 +224,15 @@ export class Token {
 				return {expand: [new Token(this.type, this.attributes, this.additional, inner.expand)], rem: inner.rem}
 		}
 	}
+
+	clone() {
+		return new Token(
+			this.type,
+			Object.assign({}, this.attributes),
+			Object.assign({}, this.additional),
+			this.children.map((t) => t.clone())
+		)
+	}
 }
 
 export class Macro {
@@ -237,16 +250,43 @@ export class Macro {
 	/**
 	 * Replace elements with a macro expansion. Requires the macro inputs to be nested objects not a token stream
 	 * @param elements {(Token | string)[]}
-	 * @return {(Token | string)[]}
+	 * @param attrs {Object} Attributes on the macro call (ID and classes)
+	 * @return {{ok: (Token | string)[] | null, err: (string | null)}}
 	 */
-	replace(elements) {
+	replace(elements, attrs) {
 		elements.reverse()
-		return this.rep.reduce((acc, child) => {
+		const rep = this.rep.map((t) => typeof t === "string" ? t : t.clone())
+		const pre_attr_children = rep.reduce((acc, child) => {
 			if (typeof child === "string") return [...acc, child]
 			const res = child.replace(elements)
 			elements = res.rem
 			return [...acc, ...res.expand]
 		}, [])
+		if (pre_attr_children.length === 0) delete attrs["id"]
+		if (pre_attr_children.length === 1) {
+			if (typeof pre_attr_children[0] !== "string" && attrs["id"] !== undefined) {
+				pre_attr_children[0].attributes["id"] = attrs["id"]
+			}
+			delete attrs["id"]
+		}
+		if (attrs["id"] !== undefined) return {ok: null, err: "ID cannot be applied to a macro with multiple root elements"}
+		pre_attr_children.map((t) => {
+			if (typeof t === "string") return t
+			for (const attr in attrs) {
+				if (UNIQUE_ATTRS.includes(attr)) t.attributes[attr] = attrs[attr]
+				else {
+					// check if attr already exists
+					if (t.attributes[attr] !== undefined) {
+						if (typeof t.attributes[attr] === "string") t.attributes[attr] = [...t.attributes[attr].split(" "), ...attrs[attr].split(" ")]
+						else t.attributes[attr] = attrs[attr]
+					} else {
+						t.attributes[attr] = attrs[attr]
+					}
+				}
+			}
+			return t
+		})
+		return {ok: pre_attr_children, err: null}
 	}
 }
 

@@ -276,7 +276,7 @@ Parser.prototype.parse = function () {
 			ok: null,
 			err: new Error("Unable to parse remaining text", this.path, this.ln, this.col)
 		}
-		if (ok !== null) tokens = [...tokens, ok]
+		if (ok !== null) tokens = [...tokens, ...ok]
 	}
 
 	return {ok: tokens, err: null}
@@ -294,7 +294,7 @@ Parser.prototype.parse = function () {
  * If an error is found, the error object will contain a `ln` and `col` value for the line and column where the error was found
  * @param default_tag {string} Default tag to use when no other is given
  * @param str_replace {boolean} Pass any string through the {@link convertReservedChar} function
- * @return {{ok: (Token | string | null), err: (string | null)}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
+ * @return {{ok: ((Token | string)[] | null), err: (string | null)}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
  */
 Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	// move over "blank" characters
@@ -308,28 +308,50 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	if (LITERAL_DELIMITERS.includes(this.next())) {
 		let res = this.parseStr(this.next(), str_replace)
 		if (res.err) return {ok: null, err: res.err}
-		return {ok: res.ok, err: null}
+		return {ok: [res.ok], err: null}
 	}
 	//check for macro def
 	if (this.next() === "-" && this.src[this.index + 1] === "-") {
 		this.index += 2
-		this.macro()
+		return this.macro()
 	}
 	// check for comment
 	if (this.next() === "/") {
 		this.src = this.src.slice(this.index)
 		let res = this.parseComment()
 		if (res.err) return {ok: null, err: res.err}
-		return {ok: res.ok, err: null}
+		return {ok: [res.ok], err: null}
 	}
 	// get tag
 	let tag_res = this.parseTag(default_tag)
 	if (tag_res.err) return {ok: null, err: tag_res.err}
 	let {type, attrs, additional} = tag_res.ok
 
+	// check if the tag is a macro
+	let macro = undefined
+	if (type[0] === ":" && ![":child", ":children", ":consume", ":consume-all"].includes(type)) {
+		// try to get macro
+		type = type.slice(1)
+		if (!type) return {ok: null, err: "Macro cannot have an empty name"}
+		let index_to_check = this.macros.length
+		while (index_to_check > 0) {
+			index_to_check--
+			const possible = this.macros[index_to_check][type]
+			if (possible) {
+				macro = possible
+				break
+			}
+		}
+		if (macro === undefined) return {ok: null, err: `Unknown macro :${type}`}
+		if (macro.void) {
+			this.update_src()
+			return {ok: macro.replace([], attrs).ok, err: null}
+		}
+	}
+
 	if (additional["void"]) {
 		this.update_src()
-		return {ok: new Token(type, attrs, additional, []), err: null}
+		return {ok: [new Token(type, attrs, additional, [])], err: null}
 	}
 
 	// match the inner section
@@ -338,7 +360,11 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	str_replace = type !== "style"
 	// skip spaces and tabs
 	this.st()
-	if (!this.remaining()) return {ok: new Token(type, attrs, additional, []), err: null}
+	if (!this.remaining()){
+		this.update_src()
+		if (macro === undefined) return {ok: [new Token(type, attrs, additional, [])], err: null}
+		return macro.replace([], attrs)
+	}
 	// check if element has one inner or block inner
 	if (this.next() === ">") {
 		additional["inline"] = true
@@ -347,24 +373,30 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 		this.update_src()
 		let res = this.parse_inner(default_tag, str_replace)
 		if (res.err) return {ok: null, err: res.err}
-		if (res.ok !== null) children = [...children, res.ok]
+		if (res.ok !== null) children = [...children, ...res.ok]
 	} else if (this.next() === "{") {
+		this.macros.push({})
 		this.index++
 		this.col++
 		this.update_src()
 		while (this.remaining() && this.next() !== "}") {
 			let res = this.parse_inner(default_tag, str_replace)
 			if (res.err) return {ok: null, err: res.err, rem: ""}
-			if (res.ok !== null) children = [...children, res.ok]
+			if (res.ok !== null) children = [...children, ...res.ok]
 			this.stn()
 		}
 		if (!this.remaining()) return {ok: null, err: "Unclosed block! Expected closing '}' found EOF!"}
+		this.macros.pop()
 		this.index++
 		this.col++
 	}
 	this.update_src()
 
-	return {ok: new Token(type, attrs, additional, children), err: null}
+	if (macro !== undefined) {
+		return macro.replace(children, attrs)
+	}
+
+	return {ok: [new Token(type, attrs, additional, children)], err: null}
 }
 
 /**

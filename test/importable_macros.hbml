@@ -1,0 +1,2 @@
+--external-macro > "Hello, world!"
+--external-macro2 > p > "Hello, world!"

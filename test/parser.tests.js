@@ -117,7 +117,7 @@ describe("Testing HBML: parser.js", () => {
                     script[src=script1.js]
                     link[rel='stylesheet' href='style.css']
                 } :head-base.class`),
-                `<script class="class" src="script1.js"></script><link class="class" rel="stylesheet" href="style.css"/>`)
+                `<script src="script1.js" class="class"></script><link rel="stylesheet" href="style.css" class="class"/>`)
         })
         it(":child and :children", () => {
             equal(p(`
@@ -195,18 +195,18 @@ describe("Testing HBML: parser.js", () => {
             `), `<h2>Heading</h2><ul><li>Text 1</li></ul><h2>Heading</h2><ul><li>Text 1</li><li>Text 2</li><li>Text 3</li></ul>`)
         })
         it("Imports", () => {
-            equal(p(`@import ./importable_macros
+            equal(p(`@import ./test/importable_macros
             :external-macro`), `Hello, world!`)
-            equal(p(`@import ./importable_macros.hbml
+            equal(p(`@import ./test/importable_macros.hbml
             :external-macro2`), `<h1>Hello, world!</h1>`)
-            equal(p(`@import ./importable_macros.hbml namespace
+            equal(p(`@import ./test/importable_macros.hbml namespace
             :namespace:external-macro`), `Hello, world!`)
         })
 
         describe("Built-in validation", () => {
             it('Default :root', () => {
                 equal(p(":root"), `<!DOCTYPE html><html lang="en"></html>`)
-                equal(p(":root > 'Text'"), `<!DOCTYPE html><html lang="en"></html>`)
+                equal(p(":root > 'Text'"), `<!DOCTYPE html><html lang="en">Text</html>`)
             })
             it(':root with modified lang attribute', () => {
                 equal(p(`:root[lang=en-CA]`), `<!DOCTYPE html><html lang="en-CA"></html>`)
