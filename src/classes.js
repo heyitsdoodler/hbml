@@ -230,7 +230,7 @@ export class Token {
 			this.type,
 			Object.assign({}, this.attributes),
 			Object.assign({}, this.additional),
-			this.children.map((t) => t.clone())
+			this.children.map((t) => typeof t === "string" ? t : t.clone())
 		)
 	}
 }
