@@ -1,0 +1,33 @@
+{
+  "name": "hbml",
+  "description": "HBML builder and linter",
+  "version": "0.1.0",
+  "repository": "github:heyitsdoodler/hbml",
+  "main": "src/index.js",
+  "files": [
+    "src/index.js",
+    "src/constants.js",
+    "src/parser.js",
+    "src/commands/"
+  ],
+  "dependencies": {
+    "ajv": "8.11.2",
+    "chalk": "5.1.2",
+    "configstore": "6.0.0",
+    "minimist": "1.2.7"
+  },
+  "devDependencies": {
+    "benchmark": "2.1.4",
+    "mocha": "10.2.0"
+  },
+  "bin": {
+    "hbml": "src/index.js"
+  },
+  "scripts": {
+    "nodemon": "nodemon -e js,hbml src/index.js build src/test.hbml",
+    "bench": "node src/bench.js",
+    "test": "mocha"
+  },
+  "license": "MIT",
+  "type": "module"
+}

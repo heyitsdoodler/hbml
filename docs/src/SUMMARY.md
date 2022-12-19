@@ -1,0 +1,17 @@
+# Summary
+
+- [Introduction](intro.md)
+- [Getting started](get_start/README.md)
+  - [Your first file](get_start/first_file.md)
+  - [Projects](get_start/setup.md)
+- [Macros](macros/README.md)
+  - [Simple macros](macros/1.simple.md)
+  - [Macro children](macros/2.children.md)
+  - [Macro conditionals](macros/3.conditionals.md)
+  - [Scopes](macros/4.scopes.md)
+  - [Standard macros](macros/5.std.md)
+- [Importing files](imports.md)
+- [Commands](commands/README.md)
+  - [`build`](commands/build.md)
+  - [`lint`](commands/lint.md)
+  - [`init`](commands/init.md)
