@@ -98,8 +98,6 @@ export class Token {
 	 */
 	toString() {
 		switch (this.type) {
-			case "string_literal":
-				return this.additional.value
 			case "c t":
 				return `<!--${this.additional.value}-->`
 			case "!DOCTYPE":
@@ -125,7 +123,7 @@ export class Token {
 		// indentation prefix before the line
 		let ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
 		// comments are handled like strings but are caught here
-		if (this.type === "comment") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
+		if (this.type === "c t") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
 		// get tag in accordance with config values
 		const reduces_attrs = Object.entries(this.attributes).filter(([k, _]) => k !== "id" && k !== "class")
 		const modified_attrs = Object.keys(reduces_attrs).length > 0 ? reduces_attrs.reduce((acc, [k, v]) => v === true ? `${acc} ${k}` : `${acc} ${k}="${v.replaceAll('"', '\\"')}"`, "").slice(1) : ""
