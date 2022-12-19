@@ -28,6 +28,38 @@ export const T2B = (file_name, out_file) => {
 		)
 	}
 	tokens = tokens.filter((t) => typeof t === "string" ? t.trim() !== "" : true).map((t) => convert(t))
+	const doctype_index = tokens.findIndex((t) => typeof t === "string" && /<!doctype html>/i.test(t))
+	if (doctype_index >= 0) {
+		let n = 1
+		let found = false
+		while (doctype_index + n < tokens.length) {
+			if (typeof tokens[doctype_index + n] === "object") {
+				if (tokens[doctype_index + n].type === "html") {
+					found = true
+					break
+				} else if (tokens[doctype_index + n].type === "c t") n++
+				else break
+			} else break
+		}
+		if (found) {
+			let new_attrs = Object.assign({}, tokens[doctype_index + n].attributes)
+			if (new_attrs["lang"] === "en") delete new_attrs["lang"]
+			const clone = (t) => {
+				if (typeof t === "string") return t
+				return new Token(
+					t.type, Object.assign({}, t.attributes), Object.assign({}, t.additional),
+					t.children.map((t) => clone(t))
+				)
+			}
+			tokens = [
+				...tokens.slice(0, doctype_index), ...tokens.slice(doctype_index + 1, doctype_index + n),
+				new Token(
+					":root", new_attrs, Object.assign({}, tokens[doctype_index + n].additional),
+					tokens[doctype_index + n].children.map((t) => clone(t))
+				), ...tokens.slice(doctype_index + n + 1)
+			]
+		}
+	}
 	fs.writeFileSync(out_file, tokens.map((t) => typeof t === "object" ? t.lint(0, false, CONFIG_DEFAULTS) : t).join(""))
 	// const doctype_index = tokens.indexOf("<!DOCTYPE html>")
 	// if (doctype_index !== -1 && typeof tokens[doctype_index + 1] === "object" && tokens[doctype_index + 1].tag === "html") {

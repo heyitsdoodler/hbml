@@ -14,12 +14,12 @@
     "ajv": "8.11.2",
     "chalk": "5.1.2",
     "configstore": "6.0.0",
-    "minimist": "1.2.7"
+    "minimist": "1.2.7",
+    "posthtml-parser": "0.11.0"
   },
   "devDependencies": {
     "benchmark": "2.1.4",
-    "mocha": "10.2.0",
-    "posthtml-parser": "^0.11.0"
+    "mocha": "10.2.0"
   },
   "bin": {
     "hbml": "src/index.js"
