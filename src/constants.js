@@ -96,3 +96,11 @@ export const UNIQUE_ATTRS = [
 	"lang",
 	"id"
 ]
+
+/**
+ * Built-in macro names that aren't defined as standard macros
+ * @type {string[]}
+ */
+export const BUILTIN_MACROS = [
+	":child", ":children", ":consume", ":consume-all"
+]

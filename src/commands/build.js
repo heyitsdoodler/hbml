@@ -3,6 +3,7 @@ import fs from "fs"
 import npath from "path"
 import {fullStringify} from "../parser.js";
 import {getConfig} from "../config_parse.js";
+import {Parser} from "../classes.js";
 
 /**
  * Build function runner
@@ -113,8 +114,8 @@ const build_internal = (paths, output, allow) => {
 	let filtered = []
 	const cwd = process.cwd();
 	paths.forEach((path) => {
-		const read = npath.normalize(`${npath.isAbsolute(path) ? "" : cwd}/${path}`);
-		const write = npath.normalize(`${npath.isAbsolute(path) ? "" : cwd + "/" + output}/${path}`);
+		const read = npath.join(npath.isAbsolute(path) ? "" : cwd, path);
+		const write = npath.join(npath.isAbsolute(path) ? "" : npath.join(cwd, output), path);
 		// check if path is a file or directory
 		if (!fs.existsSync(read)) {
 			if (allow.not_found) {

@@ -1,7 +1,7 @@
 /**
  * All the classes. Contains {@link Parser}, {@link Token}, {@link Macro}, and {@link Error}
  */
-import {UNIQUE_ATTRS} from "./constants.js";
+import {BUILTIN_MACROS, UNIQUE_ATTRS} from "./constants.js";
 
 export class Parser {
 	constructor(src, path, build) {
@@ -228,21 +228,61 @@ export class Token {
 	/**
 	 * Clones a token. Required when expanding macros to ensure the returned token(s) are separate from the tokens
 	 * contained by the macro
-	 * @return {Token} Cloned token
+	 * @param p{Parser} Parser class instance calling the macro expansion
+	 * @return {{ok: Token|null, err: null|string}} Cloned token
 	 */
-	clone() {
-		return new Token(
+	clone(p) {
+		let new_children = []
+		this.children.map((t) => {
+			if (typeof t === "string") new_children.push(t)
+			else {
+				const res = t.expand_current(p)
+				if (res.err) return {ok: null, err: res.err}
+				new_children = [...new_children, ...res.ok]
+			}}
+		)
+		return {ok: new Token(
 			this.type,
 			Object.assign({}, this.attributes),
 			Object.assign({}, this.additional),
-			this.children.map((t) => typeof t === "string" ? t : t.clone())
-		)
+			new_children
+		), err: null}
+	}
+
+	/**
+	 * Expand current node if it's a macro, otherwise return self
+	 * @param p{Parser} Parser calling the macro expansion
+	 * @return {{ok: (Token|string)[]|null, err: string|null}}
+	 */
+	expand_current(p) {
+		if (this.type[0] === ":" && !BUILTIN_MACROS.includes(this.type)) {
+			// try to get macro
+			const {ok, err} = p.get_macro(this.type.slice(1))
+			if (err) return {ok: null, err: err}
+			if (ok.void) return {ok: this.children, err: null}
+			else {
+				let new_children = []
+				ok.rep.map((t) => {
+					if (typeof t === "string") new_children.push(t)
+					else {
+						const res = t.expand_current(p)
+						if (res.err) return {ok: null, err: res.err}
+						new_children = [...new_children, ...res.ok]
+					}}
+				)
+				return {ok: new_children, err: null}
+			}
+		} else {
+			const res = this.clone(p)
+			if (res.err) return {ok: null, err: res.err}
+			return {ok: [res.ok], err: null}
+		}
 	}
 }
 
 export class Macro {
 	/**
-	 * @param rep {Object[]} Replacement object array
+	 * @param rep {(Token|string)[]} Replacement object array
 	 * @param isVoid {boolean} Does the macro accept child elements
 	 * @return {Macro}
 	 */
@@ -256,26 +296,35 @@ export class Macro {
 	 * Replace elements with a macro expansion. Requires the macro inputs to be nested objects not a token stream
 	 * @param elements {(Token | string)[]}
 	 * @param attrs {Object} Attributes on the macro call (ID and classes)
+	 * @param parser {Parser} Parser class instance calling macro expansion
 	 * @return {{ok: (Token | string)[] | null, err: (string | null)}}
 	 */
-	replace(elements, attrs) {
+	replace(elements, attrs, parser) {
 		elements.reverse()
-		const rep = this.rep.map((t) => typeof t === "string" ? t : t.clone())
-		const pre_attr_children = rep.reduce((acc, child) => {
+		let rep = []
+		for (let i = 0; i < this.rep.length; i++) {
+			if (typeof this.rep[i] === "string") rep.push(this.rep[i])
+			else {
+				const res = this.rep[i].expand_current(parser)
+				if (res.err) return {ok: null, err: res.err}
+				else rep = [...rep, ...res.ok]
+			}
+		}
+		rep = rep.reduce((acc, child) => {
 			if (typeof child === "string") return [...acc, child]
 			const res = child.replace(elements)
 			elements = res.rem
 			return [...acc, ...res.expand]
 		}, [])
-		if (pre_attr_children.length === 0) delete attrs["id"]
-		if (pre_attr_children.length === 1) {
-			if (typeof pre_attr_children[0] !== "string" && attrs["id"] !== undefined) {
-				pre_attr_children[0].attributes["id"] = attrs["id"]
+		if (rep.length === 0) delete attrs["id"]
+		if (rep.length === 1) {
+			if (typeof rep[0] !== "string" && attrs["id"] !== undefined) {
+				rep[0].attributes["id"] = attrs["id"]
 			}
 			delete attrs["id"]
 		}
 		if (attrs["id"] !== undefined) return {ok: null, err: "ID cannot be applied to a macro with multiple root elements"}
-		pre_attr_children.map((t) => {
+		rep.map((t) => {
 			if (typeof t === "string") return t
 			for (const attr in attrs) {
 				if (UNIQUE_ATTRS.includes(attr)) t.attributes[attr] = attrs[attr]
@@ -291,7 +340,7 @@ export class Macro {
 			}
 			return t
 		})
-		return {ok: pre_attr_children, err: null}
+		return {ok: rep, err: null}
 	}
 }
 
@@ -304,6 +353,6 @@ export class Error {
 	}
 
 	toString() {
-		`${this.desc} ${this.file} ${this.ln}:${this.col}`
+		return `${this.desc} ${this.file} ${this.ln}:${this.col}`
 	}
 }

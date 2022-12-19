@@ -1,15 +1,16 @@
 /**
  * # HBML Parser
  *
- * Contains a {@link Token.pa tokeniser} to turn text into {@link Token tokens} which can then be turned into HTML or
- * linted by internal functions ({@link Token.stringify HTML} {@link Token.lint lint}). We also provide a
- * {@link fullStringify} function to handle tokenising and strinigifying source text into HTML
+ * Contains the main parsing functions used by the {@link Parser} class. Also contains a stringification function
+ * {@link fullStringify} to take HBML and return HTML
  */
 
 import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
 import "./macros.js"
+import fs from "fs"
+import npath from "path"
 
 /**
  * Convert reserved HTML characters to their corresponding entities
@@ -270,7 +271,7 @@ Parser.prototype.parse = function () {
 
 	while (this.remaining()) {
 		let previous = this.src
-		const {ok, err} = this.parse_inner("div", true)
+		const {ok, err} = this.parse_inner("div", true, false)
 		if (err) return {ok: null, err: new Error(err, this.path, this.ln, this.col)}
 		if (previous === this.src) return {
 			ok: null,
@@ -282,7 +283,19 @@ Parser.prototype.parse = function () {
 	return {ok: tokens, err: null}
 }
 
-Parser
+/**
+ * ### Import specific parser
+ *
+ * Used for parsing imported files and getting macro definitions
+ * @return {{ok: (Object | null), err: (Error | null)}}
+ */
+Parser.prototype.import_parse = function () {
+	const {_, err} = this.parse()
+	if (err !== null) return {ok: null, err: err}
+	let out = this.macros[0]
+	delete out.root
+	return {ok: out, err: null}
+}
 
 /**
  * ### Tokenises an input string
@@ -296,9 +309,10 @@ Parser
  * If an error is found, the error object will contain a `ln` and `col` value for the line and column where the error was found
  * @param default_tag {string} Default tag to use when no other is given
  * @param str_replace {boolean} Pass any string through the {@link convertReservedChar} function
+ * @param under_macro_def {boolean} Is the parser parsing under a macro definition
  * @return {{ok: ((Token | string)[] | null), err: (string | null)}}} (Ok: ``array of tokens, Err: Error description, rem: remaining string to parse)
  */
-Parser.prototype.parse_inner = function (default_tag, str_replace) {
+Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_def) {
 	// move over "blank" characters
 	this.stn()
 	if (this.next() === "}") {
@@ -324,6 +338,44 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 		if (res.err) return {ok: null, err: res.err}
 		return {ok: [res.ok], err: null}
 	}
+	// check for import statement
+	if (this.src.startsWith("@import", this.index)) {
+		this.index += 7
+		this.st()
+		let path = ""
+		while (this.remaining()) {
+			if (" \t\n".includes(this.next())) break
+			path += this.next()
+			this.index++
+			this.col++
+		}
+		let prefix = ""
+		if (this.remaining() && this.next() !== "\n") {
+			this.st()
+			while (this.remaining()) {
+				if (".#[{>]}'\"` \t\n".includes(this.next())) break
+				prefix += this.next()
+				this.index++
+				this.col++
+			}
+			prefix += ":"
+		}
+		// find file
+
+		path = npath.join(npath.isAbsolute(path) ? "" : process.cwd(), path)
+		if (!path.endsWith(".hbml")) path += ".hbml"
+		if (!fs.existsSync(path)) return {ok: null, err: `Imported file ${path} does not exist`}
+		const {ok, err} = new Parser(fs.readFileSync(path).toString(), path, true).import_parse()
+		if (err !== null) return {ok: null, err: `Error importing file ${path} (${err.toString()})`}
+		this.update_src()
+		for (const imported_macro in ok) {
+			if (this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] !== undefined){
+				return {ok: null, err: "Cannot redefine macros through imports. Try using a namespace instead"}
+			}
+			this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] = ok[imported_macro]
+		}
+		return {ok: null, err: null}
+	}
 	// get tag
 	let tag_res = this.parseTag(default_tag)
 	if (tag_res.err) return {ok: null, err: tag_res.err}
@@ -333,21 +385,15 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	let macro = undefined
 	if (type[0] === ":" && ![":child", ":children", ":consume", ":consume-all"].includes(type)) {
 		// try to get macro
-		type = type.slice(1)
-		if (!type) return {ok: null, err: "Macro cannot have an empty name"}
-		let index_to_check = this.macros.length
-		while (index_to_check > 0) {
-			index_to_check--
-			const possible = this.macros[index_to_check][type]
-			if (possible) {
-				macro = possible
-				break
+		if (type === ":") return {ok: null, err: "Macro cannot have an empty name"}
+		if (!under_macro_def) {
+			const {ok, err} = this.get_macro(type.slice(1))
+			if (ok === null) return {ok: null, err: err}
+			macro = ok
+			if (ok.void) {
+				this.update_src()
+				return {ok: ok.replace([], attrs, this).ok, err: null}
 			}
-		}
-		if (macro === undefined) return {ok: null, err: `Unknown macro :${type}`}
-		if (macro.void) {
-			this.update_src()
-			return {ok: macro.replace([], attrs).ok, err: null}
 		}
 	}
 
@@ -373,7 +419,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 		this.index++
 		this.col++
 		this.update_src()
-		let res = this.parse_inner(default_tag, str_replace)
+		let res = this.parse_inner(default_tag, str_replace, under_macro_def)
 		if (res.err) return {ok: null, err: res.err}
 		if (res.ok !== null) children = [...children, ...res.ok]
 	} else if (this.next() === "{") {
@@ -382,7 +428,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 		this.col++
 		this.update_src()
 		while (this.remaining() && this.next() !== "}") {
-			let res = this.parse_inner(default_tag, str_replace)
+			let res = this.parse_inner(default_tag, str_replace, under_macro_def)
 			if (res.err) return {ok: null, err: res.err, rem: ""}
 			if (res.ok !== null) children = [...children, ...res.ok]
 			this.stn()
@@ -394,11 +440,29 @@ Parser.prototype.parse_inner = function (default_tag, str_replace) {
 	}
 	this.update_src()
 
-	if (macro !== undefined) {
-		return macro.replace(children, attrs)
-	}
+	if (macro !== undefined) return macro.replace(children, attrs, this)
 
 	return {ok: [new Token(type, attrs, additional, children)], err: null}
+}
+
+/**
+ *
+ * @param name {string} Macro name (*without* colon prefix)
+ * @return {{err: null, ok: Macro}|{err: string, ok: null}}
+ */
+Parser.prototype.get_macro = function (name) {
+	let macro = undefined
+	let index_to_check = this.macros.length
+	while (index_to_check > 0) {
+		index_to_check--
+		const possible = this.macros[index_to_check][name]
+		if (possible) {
+			macro = possible
+			break
+		}
+	}
+	if (macro === undefined) return {ok: null, err: `Unknown macro :${name}`}
+	return {ok: macro, err: null}
 }
 
 /**
