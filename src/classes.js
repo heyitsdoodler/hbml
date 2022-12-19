@@ -1,9 +1,17 @@
 /**
  * All the classes. Contains {@link Parser}, {@link Token}, {@link Macro}, and {@link Error}
  */
-import {BUILTIN_MACROS, UNIQUE_ATTRS} from "./constants.js";
+import {BUILTIN_MACROS, DEFAULT_MACROS, UNIQUE_ATTRS} from "./constants.js";
 
 export class Parser {
+	/**
+	 * Macro array
+	 *
+	 * This array contains all currently in-scope macros and is dynamic. Each new scope adds a new object to the array
+	 * which is then removed at the end of the scope. The items in the array are objects where each value is either a
+	 * {@link Macro} or a function that takes an array of child elements and returns aan array of Token or string items
+	 */
+	macros
 	constructor(src, path, build) {
 		this.src = src
 		this.path = path
@@ -11,12 +19,7 @@ export class Parser {
 		this.col = 1
 		this.index = 0
 		this.macro = build ? this.macro_build : this.macro_lint
-		this.macros = [{
-			"root": new Macro([
-				new Token("!DOCTYPE", {html: true}, {}, []),
-				new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
-			], false)
-		}]
+		this.macros = [Object.assign({}, DEFAULT_MACROS)]
 	}
 
 	next = function () {

@@ -5,7 +5,7 @@
  * {@link fullStringify} to take HBML and return HTML
  */
 
-import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS} from "./constants.js"
+import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS, DEFAULT_MACROS} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
 import "./macros.js"
@@ -292,8 +292,8 @@ Parser.prototype.parse = function () {
 Parser.prototype.import_parse = function () {
 	const {_, err} = this.parse()
 	if (err !== null) return {ok: null, err: err}
-	let out = this.macros[0]
-	delete out.root
+	let out = Object.assign({}, this.macros[0])
+	Object.keys(DEFAULT_MACROS).forEach((k) => delete out[k])
 	return {ok: out, err: null}
 }
 
@@ -360,12 +360,22 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 			}
 			prefix += ":"
 		}
-		// find file
-
-		path = npath.join(npath.isAbsolute(path) ? "" : process.cwd(), path)
-		if (!path.endsWith(".hbml")) path += ".hbml"
-		if (!fs.existsSync(path)) return {ok: null, err: `Imported file ${path} does not exist`}
-		const {ok, err} = new Parser(fs.readFileSync(path).toString(), path, true).import_parse()
+		let src
+		// find the file
+		if (path.startsWith("http")) {
+			let req = new XMLHttpRequest()
+			req.open("GET", path, false)
+			req.timeout = 15
+			req.send(null)
+			if (req.status !== 200) return {ok: null, err: `Unable to access ${path} (response ${req.status} '${req.responseText}')`}
+			src = req.responseText
+		} else {
+			path = npath.join(npath.isAbsolute(path) ? "" : process.cwd(), path)
+			if (!path.endsWith(".hbml")) path += ".hbml"
+			if (!fs.existsSync(path)) return {ok: null, err: `Imported file ${path} does not exist`}
+			src = fs.readFileSync(path).toString()
+		}
+		const {ok, err} = new Parser(src, path, true).import_parse()
 		if (err !== null) return {ok: null, err: `Error importing file ${path} (${err.toString()})`}
 		this.update_src()
 		for (const imported_macro in ok) {
@@ -411,7 +421,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	if (!this.remaining()){
 		this.update_src()
 		if (macro === undefined) return {ok: [new Token(type, attrs, additional, [])], err: null}
-		return macro.replace([], attrs)
+		return typeof macro === "object" ? macro.replace([], attrs) : {ok: macro([]), err: null}
 	}
 	// check if element has one inner or block inner
 	if (this.next() === ">") {
@@ -440,7 +450,10 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	}
 	this.update_src()
 
-	if (macro !== undefined) return macro.replace(children, attrs, this)
+	if (macro !== undefined) {
+		if (typeof macro === "object") return macro.replace(children, attrs, this)
+		return {ok: macro(children), err: null}
+	}
 
 	return {ok: [new Token(type, attrs, additional, children)], err: null}
 }

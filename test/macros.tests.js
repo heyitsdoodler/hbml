@@ -96,6 +96,17 @@ describe("Macros", () => {
 				equal(p(`:root[lang="en-CA"]`), `<!DOCTYPE html><html lang="en-CA"></html>`)
 			})
 		})
+		it(":unwrap", () => {
+			equal(p(":unwrap"), ``)
+			equal(p(`:unwrap {
+					"Text 1"
+					{{"Text 2"}{p}}
+					// A comment
+					{}
+				}`),
+				`Text 1<div>Text 2</div><div><p></p></div><!-- A comment-->`
+			)
+		})
 	})
 	it("Nested :consume and :consume-all", () => {
 		equal(p("--test > :consume { :child :consume > :child } :test { 't1' 't2' } :test > 't1'"), "t1t2t1")

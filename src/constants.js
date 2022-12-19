@@ -2,6 +2,8 @@
  * Constants used by the parser
  */
 
+import {Macro, Token} from "./classes.js";
+
 /**
  * Characters that delimit text
  */
@@ -104,3 +106,21 @@ export const UNIQUE_ATTRS = [
 export const BUILTIN_MACROS = [
 	":child", ":children", ":consume", ":consume-all"
 ]
+
+export const DEFAULT_MACROS = {
+	"root": new Macro([
+		new Token("!DOCTYPE", {html: true}, {}, []),
+		new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
+	], false),
+	"unwrap": (c) => {
+		let out = []
+		c.forEach((t) => {
+			if (typeof t === "string") out.push(t)
+			 else {
+				 if (t.type === "c t") out.push(t)
+				else out = [...out, ...t.children]
+			}
+		})
+		return out
+	}
+}
