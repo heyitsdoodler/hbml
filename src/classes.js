@@ -264,7 +264,7 @@ export class Token {
 			// try to get macro
 			const {ok, err} = p.get_macro(this.type.slice(1))
 			if (err) return {ok: null, err: err}
-			if (ok.void) return {ok: this.children, err: null}
+			if (ok.void) return {ok: ok.rep, err: null}
 			else {
 				let new_children = []
 				ok.rep.map((t) => {

@@ -286,14 +286,26 @@ Parser.prototype.parse = function () {
  * ### Import specific parser
  *
  * Used for parsing imported files and getting macro definitions
+ * @param prefix {string} Namespace prefix
  * @return {{ok: (Object | null), err: (Error | null)}}
  */
-Parser.prototype.import_parse = function () {
+Parser.prototype.import_parse = function (prefix) {
 	const {_, err} = this.parse()
 	if (err !== null) return {ok: null, err: err}
 	let out = Object.assign({}, this.macros[0])
 	Object.keys(DEFAULT_MACROS).forEach((k) => delete out[k])
-	return {ok: out, err: null}
+	if (prefix === "") return {ok: out, err: null}
+	// traverse all macros and add namespaces to them
+	const updateMacroCall = (t) => {
+		if (typeof t === "string") return t
+		if (t.type[0] === ":") t.type = `:${prefix}${t.type.slice(1)}`
+		return new Token(t.type, t.attributes, t.additional, t.children.map((c) => updateMacroCall(c)))
+	}
+	let prefixed_out = {}
+	for (const outKey in out) {
+		prefixed_out[`${prefix}${outKey}`] = new Macro(out[outKey].rep.map((t) => updateMacroCall(t)), out[outKey].void)
+	}
+	return {ok: prefixed_out, err: null}
 }
 
 /**
@@ -374,14 +386,14 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 			if (!fs.existsSync(path)) return {ok: null, err: `Imported file ${path} does not exist`}
 			src = fs.readFileSync(path).toString()
 		}
-		const {ok, err} = new Parser(src, path, true).import_parse()
+		const {ok, err} = new Parser(src, path, true).import_parse(prefix)
 		if (err !== null) return {ok: null, err: `Error importing file ${path} (${err.toString()})`}
 		this.update_src()
 		for (const imported_macro in ok) {
-			if (this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] !== undefined){
+			if (this.macros[this.macros.length - 1][imported_macro] !== undefined){
 				return {ok: null, err: "Cannot redefine macros through imports. Try using a namespace instead"}
 			}
-			this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] = ok[imported_macro]
+			this.macros[this.macros.length - 1][imported_macro] = ok[imported_macro]
 		}
 		return {ok: null, err: null}
 	}
