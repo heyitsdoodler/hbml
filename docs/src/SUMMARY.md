@@ -8,6 +8,7 @@
   - [Simple macros](macros/1.simple.md)
   - [Macro children](macros/2.children.md)
   - [Macro conditionals](macros/3.conditionals.md)
+  - [Scopes](macros/4.scopes.md)
   - [Standard macros](macros/5.std.md)
 - [Importing files](imports.md)
 - [Commands](commands/README.md)
