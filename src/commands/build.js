@@ -161,42 +161,31 @@ const build_internal = (paths, output, allow) => {
  * @param allow {Object} Allow arguments
  */
 const parse_file = (path, allow) => {
-	fs.readFile(path.read, (read_err, data) => {
-		if (read_err) {
-			if (allow.not_found) {
-				console.log(chalk.yellow(`Unable to read file ${path.read}! Skipping over file`))
-			} else {
-				console.log(chalk.red(`Unable to read file ${path.read}! Stopping!\nTo skip over missing files, pass the -s=not_found flag`))
-				process.exit(1)
-			}
-			return
+	path.write = `${path.write.slice(0, path.write.length - 5)}.html`
+	const {ok, err} = fullStringify(fs.readFileSync(path.read).toString(), path.read)
+	if (err) {
+		if (allow.parse) {
+			console.log(chalk.yellow(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Skipping over file`))
+		} else {
+			console.log(chalk.red(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
+			process.exit(1)
 		}
-		path.write = `${path.write.slice(0, path.write.length - 5)}.html`
-		const {ok, err} = fullStringify(data.toString(), path.read)
-		if (err) {
-			if (allow.parse) {
-				console.log(chalk.yellow(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Skipping over file`))
-			} else {
-				console.log(chalk.red(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
-				process.exit(1)
-			}
-			return
-		}
-		if (!fs.existsSync(npath.dirname(path.write))) {
-			fs.mkdirSync(npath.dirname(path.write), {recursive: true})
-		}
-		fs.writeFile(
-			path.write, ok,
-			(e) => {
-				if (e) {
-					if (allow.write) {
-						console.log(chalk.yellow(`Unable to write file ${path.write}! Skipping over file`))
-					} else {
-						console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
-						process.exit(1)
-					}
+		return
+	}
+	if (!fs.existsSync(npath.dirname(path.write))) {
+		fs.mkdirSync(npath.dirname(path.write), {recursive: true})
+	}
+	fs.writeFile(
+		path.write, ok,
+		(e) => {
+			if (e) {
+				if (allow.write) {
+					console.log(chalk.yellow(`Unable to write file ${path.write}! Skipping over file`))
+				} else {
+					console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
+					process.exit(1)
 				}
 			}
-		)
-	})
+		}
+	)
 }
