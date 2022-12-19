@@ -383,7 +383,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 
 	// check if the tag is a macro
 	let macro = undefined
-	if (type[0] === ":" && ![":child", ":children", ":consume", ":consume-all"].includes(type)) {
+	if (type[0] === ":" && ![":child", ":unwrap-child", ":children", ":consume", ":consume-all"].includes(type)) {
 		// try to get macro
 		if (type === ":") return {ok: null, err: "Macro cannot have an empty name"}
 		if (!under_macro_def) {

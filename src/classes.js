@@ -161,7 +161,7 @@ export class Token {
 		let children = false
 		this.children = this.children.map((child) => {
 			if (typeof child !== "string") {
-				if (child.type === ":child") {
+				if (child.type === ":child" || child.type === ":unwrap-child") {
 					child_count++
 					isVoid = false
 				} else if (child.type === ":children") {
@@ -192,6 +192,8 @@ export class Token {
 			case ":child":
 				const child = elements.pop()
 				return {expand: [child ? child : ""], rem: elements}
+			case ":unwrap-child":
+				return {expand: elements.at(-1)?.children ? elements.pop().children : [""], rem: elements}
 			case ":children":
 				elements.reverse()
 				return {expand: elements, rem: []}
