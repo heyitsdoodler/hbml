@@ -18,7 +18,7 @@ export class Parser {
 		this.ln = 1
 		this.col = 1
 		this.index = 0
-		this.macro = build ? this.macro_build : this.macro_lint
+		this.isBuild = build
 		this.macros = [Object.assign({}, DEFAULT_MACROS)]
 	}
 

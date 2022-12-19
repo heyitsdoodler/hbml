@@ -3,7 +3,6 @@ import fs from "fs"
 import npath from "path"
 import {fullStringify} from "../parser.js";
 import {getConfig} from "../config_parse.js";
-import {Parser} from "../classes.js";
 
 /**
  * Build function runner

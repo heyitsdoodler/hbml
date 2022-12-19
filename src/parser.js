@@ -8,7 +8,6 @@
 import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS, DEFAULT_MACROS} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
-import "./macros.js"
 import fs from "fs"
 import npath from "path"
 
@@ -329,7 +328,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	//check for macro def
 	if (this.next() === "-" && this.src[this.index + 1] === "-") {
 		this.index += 2
-		return this.macro()
+		return this.parse_macro_def()
 	}
 	// check for comment
 	if (this.next() === "/") {
@@ -398,11 +397,11 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 		if (type === ":") return {ok: null, err: "Macro cannot have an empty name"}
 		if (!under_macro_def) {
 			const {ok, err} = this.get_macro(type.slice(1))
-			if (ok === null) return {ok: null, err: err}
+			if (ok === null && this.isBuild) return {ok: null, err: err}
 			macro = ok
 			if (ok.void) {
 				this.update_src()
-				return {ok: ok.replace([], attrs, this).ok, err: null}
+				return this.isBuild ? {ok: ok.replace([], attrs, this).ok, err: null} : {ok: [new Token(type, attrs, additional, [])], err: null}
 			}
 		}
 	}
@@ -450,12 +449,29 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	}
 	this.update_src()
 
-	if (macro !== undefined) {
+	if (macro !== undefined && this.isBuild) {
 		if (typeof macro === "object") return macro.replace(children, attrs, this)
 		return {ok: macro(children), err: null}
 	}
 
 	return {ok: [new Token(type, attrs, additional, children)], err: null}
+}
+
+/**
+ * Parse macros into un-expanded tokens and add to current macros in scope
+ * @return {{err: (string|null), ok: null}}
+ */
+Parser.prototype.parse_macro_def = function () {
+	let {ok: ok, err} = this.parse_inner("div", false, true)
+	if (err) return {ok: null, err: err}
+	// get required macro info
+	const count_res = ok[0].count_child()
+	let m_ok = count_res.tok
+	const previous = this.get_macro(m_ok.type)
+	if (previous.ok && previous.ok.void !== count_res.isVoid) return {ok: null, err: "Macro redefinitions must preserve voidness"}
+	this.macros[this.macros.length - 1][m_ok.type] = new Macro(m_ok.children, count_res.isVoid)
+	this.update_src()
+	return this.isBuild ? {ok: null, err: null} : {ok: [new Token(`--${ok[0].type}`, ok[0].attributes, {...ok[0].additional, void: m_ok.children.length === 0}, m_ok.children)], err: null}
 }
 
 /**
