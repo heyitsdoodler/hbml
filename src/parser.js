@@ -5,7 +5,14 @@
  * {@link fullStringify} to take HBML and return HTML
  */
 
-import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS, DEFAULT_MACROS} from "./constants.js"
+import {
+	VOID_ELEMENTS,
+	INLINE_ELEMENTS,
+	LITERAL_DELIMITERS,
+	UNIQUE_ATTRS,
+	DEFAULT_MACROS,
+	BUILTIN_MACROS
+} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
 import fs from "fs"
@@ -298,7 +305,7 @@ Parser.prototype.import_parse = function (prefix) {
 	// traverse all macros and add namespaces to them
 	const updateMacroCall = (t) => {
 		if (typeof t === "string") return t
-		if (t.type[0] === ":") t.type = `:${prefix}${t.type.slice(1)}`
+		if (t.type[0] === ":" && !BUILTIN_MACROS.includes(t.type)) t.type = `:${prefix}${t.type.slice(1)}`
 		return new Token(t.type, t.attributes, t.additional, t.children.map((c) => updateMacroCall(c)))
 	}
 	let prefixed_out = {}
