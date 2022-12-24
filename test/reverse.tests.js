@@ -7,9 +7,11 @@ const p = (src) => {
 }
 
 describe("Reverse tests", () => {
-	describe('Passing' , () => {
-		it('Simple', function () {
-			equal(p(`<b></b>`), `b { }`)
-		});
+	it('Simple' , () => {
+		equal(p(`<b>Text</b>`), `b > "Text"`)
+		equal(p(`<b><div>Text</div>Text</b>`), `b {\n\tdiv > "Text"\n\t"Text"\n}`)
+	});
+	it('Compressed' , () => {
+		equal(p(`<b></b>`), `b`)
 	});
 })
