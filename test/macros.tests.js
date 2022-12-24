@@ -235,12 +235,18 @@ describe("Macros", () => {
 		})
 	})
 	describe("Importing macros", () => {
-		equal(p(`@import ./test/importable_macros
+		it("Simple imports", () => {
+			equal(p(`@import ./test/importable_macros
             :external-macro`), `Hello, world!`)
-		equal(p(`@import ./test/importable_macros.hbml
+			equal(p(`@import ./test/importable_macros.hbml
             :external-macro2`), `<p>Hello, world!</p>`)
-		equal(p(`@import ./test/importable_macros.hbml namespace
+		})
+		it("Namespaced imports", () => {
+			equal(p(`@import ./test/importable_macros.hbml namespace
             :namespace:external-macro`), `Hello, world!`)
+			equal(p(`@import ./test/importable_macros.hbml namespace
+            :namespace:external-macro3 > "test"`), `testHello, world!`)
+		})
 	})
 })
 

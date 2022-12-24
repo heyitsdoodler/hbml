@@ -5,10 +5,16 @@
  * {@link fullStringify} to take HBML and return HTML
  */
 
-import {VOID_ELEMENTS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS, DEFAULT_MACROS} from "./constants.js"
+import {
+	VOID_ELEMENTS,
+	INLINE_ELEMENTS,
+	LITERAL_DELIMITERS,
+	UNIQUE_ATTRS,
+	DEFAULT_MACROS,
+	BUILTIN_MACROS
+} from "./constants.js"
 import {Token, Error, Macro, Parser} from "./classes.js";
 import chalk from "chalk";
-import "./macros.js"
 import fs from "fs"
 import npath from "path"
 
@@ -287,14 +293,26 @@ Parser.prototype.parse = function () {
  * ### Import specific parser
  *
  * Used for parsing imported files and getting macro definitions
+ * @param prefix {string} Namespace prefix
  * @return {{ok: (Object | null), err: (Error | null)}}
  */
-Parser.prototype.import_parse = function () {
+Parser.prototype.import_parse = function (prefix) {
 	const {_, err} = this.parse()
 	if (err !== null) return {ok: null, err: err}
 	let out = Object.assign({}, this.macros[0])
 	Object.keys(DEFAULT_MACROS).forEach((k) => delete out[k])
-	return {ok: out, err: null}
+	if (prefix === "") return {ok: out, err: null}
+	// traverse all macros and add namespaces to them
+	const updateMacroCall = (t) => {
+		if (typeof t === "string") return t
+		if (t.type[0] === ":" && !BUILTIN_MACROS.includes(t.type)) t.type = `:${prefix}${t.type.slice(1)}`
+		return new Token(t.type, t.attributes, t.additional, t.children.map((c) => updateMacroCall(c)))
+	}
+	let prefixed_out = {}
+	for (const outKey in out) {
+		prefixed_out[`${prefix}${outKey}`] = new Macro(out[outKey].rep.map((t) => updateMacroCall(t)), out[outKey].void)
+	}
+	return {ok: prefixed_out, err: null}
 }
 
 /**
@@ -329,7 +347,7 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	//check for macro def
 	if (this.next() === "-" && this.src[this.index + 1] === "-") {
 		this.index += 2
-		return this.macro()
+		return this.parse_macro_def()
 	}
 	// check for comment
 	if (this.next() === "/") {
@@ -375,14 +393,14 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 			if (!fs.existsSync(path)) return {ok: null, err: `Imported file ${path} does not exist`}
 			src = fs.readFileSync(path).toString()
 		}
-		const {ok, err} = new Parser(src, path, true).import_parse()
+		const {ok, err} = new Parser(src, path, true).import_parse(prefix)
 		if (err !== null) return {ok: null, err: `Error importing file ${path} (${err.toString()})`}
 		this.update_src()
 		for (const imported_macro in ok) {
-			if (this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] !== undefined){
+			if (this.macros[this.macros.length - 1][imported_macro] !== undefined){
 				return {ok: null, err: "Cannot redefine macros through imports. Try using a namespace instead"}
 			}
-			this.macros[this.macros.length - 1][`${prefix}${imported_macro}`] = ok[imported_macro]
+			this.macros[this.macros.length - 1][imported_macro] = ok[imported_macro]
 		}
 		return {ok: null, err: null}
 	}
@@ -398,11 +416,11 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 		if (type === ":") return {ok: null, err: "Macro cannot have an empty name"}
 		if (!under_macro_def) {
 			const {ok, err} = this.get_macro(type.slice(1))
-			if (ok === null) return {ok: null, err: err}
+			if (ok === null && this.isBuild) return {ok: null, err: err}
 			macro = ok
 			if (ok.void) {
 				this.update_src()
-				return {ok: ok.replace([], attrs, this).ok, err: null}
+				return this.isBuild ? {ok: ok.replace([], attrs, this).ok, err: null} : {ok: [new Token(type, attrs, additional, [])], err: null}
 			}
 		}
 	}
@@ -450,12 +468,29 @@ Parser.prototype.parse_inner = function (default_tag, str_replace, under_macro_d
 	}
 	this.update_src()
 
-	if (macro !== undefined) {
+	if (macro !== undefined && this.isBuild) {
 		if (typeof macro === "object") return macro.replace(children, attrs, this)
 		return {ok: macro(children), err: null}
 	}
 
 	return {ok: [new Token(type, attrs, additional, children)], err: null}
+}
+
+/**
+ * Parse macros into un-expanded tokens and add to current macros in scope
+ * @return {{err: (string|null), ok: null}}
+ */
+Parser.prototype.parse_macro_def = function () {
+	let {ok: ok, err} = this.parse_inner("div", false, true)
+	if (err) return {ok: null, err: err}
+	// get required macro info
+	const count_res = ok[0].count_child()
+	let m_ok = count_res.tok
+	const previous = this.get_macro(m_ok.type)
+	if (previous.ok && previous.ok.void !== count_res.isVoid) return {ok: null, err: "Macro redefinitions must preserve voidness"}
+	this.macros[this.macros.length - 1][m_ok.type] = new Macro(m_ok.children, count_res.isVoid)
+	this.update_src()
+	return this.isBuild ? {ok: null, err: null} : {ok: [new Token(`--${ok[0].type}`, ok[0].attributes, {...ok[0].additional, void: m_ok.children.length === 0}, m_ok.children)], err: null}
 }
 
 /**

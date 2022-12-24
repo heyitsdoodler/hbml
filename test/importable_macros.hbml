@@ -1,2 +1,3 @@
 --external-macro > "Hello, world!"
 --external-macro2 > p > "Hello, world!"
+--external-macro3 { :consume > :child :external-macro }
