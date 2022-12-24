@@ -8,6 +8,8 @@ const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
 
 import {build_runner} from "./commands/build.js";
 import {lint_runner} from "./commands/lint.js";
+import {reverse_runner, reverse} from "./commands/reverse.js";
+import {init_runner} from "./commands/init.js";
 import {fullStringify} from "./parser.js";
 import {Parser} from "./classes.js";
 
@@ -34,10 +36,13 @@ switch (process.argv[2]) {
 	case "lint":
 		lint_runner(args, project)
 		break
+	case "reverse":
+		if (project) args["project"] = true
+		reverse_runner(args)
+		break
 	case "init":
-		// todo: init.md
-		console.log(chalk.bgMagentaBright("init command current todo sorry"));
-		process.exit(1)
+		if (project) args["project"] = true
+		init_runner(args)
 		break
 	default:
 		console.log(chalk.red(`Unknown command ${process.argv[2]}! Try running 'hbml -h' to see available commands`));
@@ -53,6 +58,8 @@ Usage: hbml <command>
 ${chalk.bold(chalk.underline('Commands:'))}
   build     Build the project or file into HTML
   lint      Lint the project or file
+  init      Initiate a new HBML project
+  reverse   Reverse HTML into HBML
   help      Shows this message
 
 ${chalk.bold(chalk.underline('Options:'))}
@@ -63,4 +70,4 @@ ${chalk.bold(chalk.underline('Options:'))}
 	process.exit()
 }
 
-export {Parser, fullStringify}
+export {Parser, fullStringify, reverse}

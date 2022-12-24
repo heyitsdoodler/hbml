@@ -1,7 +1,7 @@
 import {strictEqual as equal} from "assert"
 import {fullStringify} from "../src/parser.js";
 
-const p = (src, ) => {
+const p = (src) => {
     const {ok, err} = fullStringify(src, "test env")
     return err ? err : ok
 }

@@ -3,6 +3,9 @@ import fs from "fs"
 import npath from "path"
 import {fullStringify} from "../parser.js";
 import {getConfig} from "../config_parse.js";
+import {Parser} from "../classes.js";
+import {expand_paths, log_ep_err} from "./fs_prelude.js";
+import {DEFAULT_ALLOW} from "../constants.js";
 
 /**
  * Build function runner
@@ -18,7 +21,7 @@ export const build_runner = (args, project) => {
 	}
 	let files
 	let out
-	let allow = {write: false, not_found: false, parse: false}
+	let allow = Object.assign({}, DEFAULT_ALLOW)
 	if (project) {
 		const conf_res = getConfig()
 		if (conf_res.err) {
@@ -110,45 +113,11 @@ ${chalk.bold(chalk.underline('Options:'))}
  */
 const build_internal = (paths, output, allow) => {
 	console.log("Building HTML files...")
-	let filtered = []
-	const cwd = process.cwd();
-	paths.forEach((path) => {
-		const read = npath.join(npath.isAbsolute(path) ? "" : cwd, path);
-		const write = npath.join(npath.isAbsolute(path) ? "" : npath.join(cwd, output), path);
-		// check if path is a file or directory
-		if (!fs.existsSync(read)) {
-			if (allow.not_found) {
-				console.log(chalk.yellow(`Unable to read ${path}! Skipping over it`))
-			} else {
-				console.log(chalk.red(`Unable to read file ${path}! Stopping!\nTo skip over missing files, pass the -s=not_found flag`))
-				process.exit(1)
-			}
-		} else {
-			const type = fs.lstatSync(path).isDirectory() ? "dir" : "file";
-			if (type === "file" && !path.endsWith(".hbml")) {
-				console.log(chalk.yellow(`Cannot build non-HBML files into HTML (${path})`));
-			}
-			filtered.push({read: read, write: write, type: type})
-		}
+	const path_res = expand_paths(paths, output)
+	if (path_res.err.length > 0) log_ep_err(path_res.err, allow)
+	path_res.ok.map((p) => {
+		parse_file(p, allow)
 	})
-	while (true) {
-		const path = filtered.pop()
-		if (path === undefined) {
-			break
-		}
-		if (path.type === "file") {
-			parse_file(path, allow)
-		} else {
-			fs.readdirSync(path.read).forEach((subpath) => {
-				const read = npath.normalize(`${path.read}/${subpath}`)
-				let write = npath.normalize(`${path.write}/${subpath}`)
-				const type = fs.lstatSync(read).isDirectory() ? "dir" : "file"
-				if ((type === "file" && read.endsWith(".hbml")) || type === "dir") {
-					filtered.push({read: read, write: write, type: type})
-				}
-			})
-		}
-	}
 	console.log(`Finished building HBML files`)
 }
 
@@ -156,7 +125,7 @@ const build_internal = (paths, output, allow) => {
  * File writer function
  *
  * Takes path object and builds it into a HTML file
- * @param path {Object} Path object
+ * @param path {{read: string, write: string}} Path object
  * @param allow {Object} Allow arguments
  */
 const parse_file = (path, allow) => {

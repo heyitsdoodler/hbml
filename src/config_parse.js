@@ -26,7 +26,9 @@ const schema = {
 						"post_tag_space": {"type": "uint8"},
 						"inline_same_line": {"type": "boolean"},
 						"keep_implicit": {"type": "boolean"},
-						"void_inline": {"type": "boolean"}
+						"void_inline": {"type": "boolean"},
+						"element_preference": {"enum": ["bracket", "arrow", "preserve"]},
+						"remove_empty": {"type": "boolean"}
 					}
 				}
 			}
@@ -78,6 +80,8 @@ export const CONFIG_DEFAULTS = {
 	'lint.config.inline_same_line': true,
 	'lint.config.keep_implicit': true,
 	'lint.config.void_inline': true,
+	'lint.config.element_preference': "preserve",
+	'lint.config.remove_empty': false,
 	'build.src': ['/'],
 	'build.output': 'html',
 	'build.allow.not_found': false,

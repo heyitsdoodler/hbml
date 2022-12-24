@@ -12,7 +12,15 @@ export class Parser {
 	 * {@link Macro} or a function that takes an array of child elements and returns aan array of Token or string items
 	 */
 	macros
-	constructor(src, path, build) {
+
+	/**
+	 * Construct a new parser
+	 * @param src{string} Source HBML to parse
+	 * @param path{string} HBML source path. Used for error descriptions
+	 * @param build{boolean} If the parser being used for building (expands macros if true otherwise treats them as
+	 * tokens for linting purposes)
+	 */
+	constructor(src, path, build = true) {
 		this.src = src
 		this.path = path
 		this.ln = 1
@@ -98,8 +106,6 @@ export class Token {
 	 */
 	toString() {
 		switch (this.type) {
-			case "string_literal":
-				return this.additional.value
 			case "c t":
 				return `<!--${this.additional.value}-->`
 			case "!DOCTYPE":
@@ -122,10 +128,23 @@ export class Token {
 	 * @return {string}
 	 */
 	lint(ident, inline, opts) {
+		// additional modifying options
+		switch (opts['lint.config.element_preference']) {
+			case "arrow":
+				if (this.children.length === 1) this.additional["inline"] = true
+				break
+			case "bracket":
+				this.additional["inline"] = false
+				break
+		}
+		if (opts['lint.config.remove_empty']) {
+			if (this.children.length === 0) this.additional["void"] = true
+		}
+
 		// indentation prefix before the line
 		let ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
 		// comments are handled like strings but are caught here
-		if (this.type === "comment") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
+		if (this.type === "c t") return `${ident_str}/* ${this.additional["value"].trim()} */\n`
 		// get tag in accordance with config values
 		const reduces_attrs = Object.entries(this.attributes).filter(([k, _]) => k !== "id" && k !== "class")
 		const modified_attrs = Object.keys(reduces_attrs).length > 0 ? reduces_attrs.reduce((acc, [k, v]) => v === true ? `${acc} ${k}` : `${acc} ${k}="${v.replaceAll('"', '\\"')}"`, "").slice(1) : ""
@@ -264,7 +283,10 @@ export class Token {
 			// try to get macro
 			const {ok, err} = p.get_macro(this.type.slice(1))
 			if (err) return {ok: null, err: err}
-			if (ok.void) return {ok: ok.rep, err: null}
+			if (typeof ok === "function") {
+				return {ok: ok(this.children), err: null}
+			}
+			if (ok.void) return {ok: [...ok.rep, ...this.children], err: null}
 			else {
 				let new_children = []
 				ok.rep.map((t) => {

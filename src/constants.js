@@ -107,6 +107,12 @@ export const BUILTIN_MACROS = [
 	":child", ":children", ":consume", ":consume-all"
 ]
 
+/**
+ * Default allow values
+ * @type {{parse: boolean, not_found: boolean, write: boolean}}
+ */
+export const DEFAULT_ALLOW = {write: false, not_found: false, parse: false}
+
 export const DEFAULT_MACROS = {
 	"root": new Macro([
 		new Token("!DOCTYPE", {html: true}, {}, []),
