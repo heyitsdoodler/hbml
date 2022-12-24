@@ -12,7 +12,15 @@ export class Parser {
 	 * {@link Macro} or a function that takes an array of child elements and returns aan array of Token or string items
 	 */
 	macros
-	constructor(src, path, build) {
+
+	/**
+	 * Construct a new parser
+	 * @param src{string} Source HBML to parse
+	 * @param path{string} HBML source path. Used for error descriptions
+	 * @param build{boolean} If the parser being used for building (expands macros if true otherwise treats them as
+	 * tokens for linting purposes)
+	 */
+	constructor(src, path, build = true) {
 		this.src = src
 		this.path = path
 		this.ln = 1
@@ -262,6 +270,9 @@ export class Token {
 			// try to get macro
 			const {ok, err} = p.get_macro(this.type.slice(1))
 			if (err) return {ok: null, err: err}
+			if (typeof ok === "function") {
+				return {ok: ok(this.children), err: null}
+			}
 			if (ok.void) return {ok: this.children, err: null}
 			else {
 				let new_children = []

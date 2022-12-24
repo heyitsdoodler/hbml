@@ -1,22 +1,78 @@
 import {parser} from 'posthtml-parser'
 import {Token} from "../classes.js";
 import fs from "fs";
-import {VOID_ELEMENTS} from "../constants.js";
+import {DEFAULT_ALLOW, VOID_ELEMENTS} from "../constants.js";
 import {CONFIG_DEFAULTS} from "../config_parse.js";
+import chalk from "chalk";
+import {expand_paths, log_ep_err} from "./fs_prelude.js";
+import npath from "path";
+
+export const reverse_runner = (args) => {
+	if (args["h"] !== undefined || args["help"] !== undefined) {
+		help()
+	}
+	if (args["o"] !== undefined && typeof args["o"] !== "string") {
+		console.log(chalk.red(`Too many output prefixes specified! Expected at most 1! See 'hbml build -h' for help`))
+		process.exit(1)
+	}
+	const paths_res = expand_paths(
+		args["_"] ? args["_"] : [],
+		args["o"] ?  args["o"] : "", ".html", ".hbml")
+	if (paths_res.err.length > 0) log_ep_err(paths_res.err, DEFAULT_ALLOW)
+	const paths = paths_res.ok
+	delete args["_"]
+	delete args["o"]
+	if (args["v"] !== undefined && typeof args["v"] !== "boolean") {
+		console.log(chalk.red(`Verbose flag does not take any values! See 'hbml build -h' for help`))
+		process.exit(1)
+	}
+	const verbose = args["v"] ? args["v"] : false
+	delete args["v"]
+	if (Object.keys(args).length !== 0) {
+		console.log(chalk.red(`Unexpected arguments ${Object.keys(args).join(", ")}! See 'hbml build -h' for help`))
+		process.exit(1)
+	}
+	paths.forEach((p) => {
+		if (verbose) process.stdout.write(`[ ] ${p.read}\r`)
+		const {ok, err} = reverse(fs.readFileSync(p.read).toString())
+		if (err !== null) {
+			console.log(chalk.red(verbose ? `[✖] ${p.read} error: ${err}` : `Error in ${p.read}: ${err}`))
+		} else {
+			if (!fs.existsSync(npath.dirname(p.write))) fs.mkdirSync(npath.dirname(p.write), {recursive: true})
+			fs.writeFileSync(p.write, ok)
+			if (verbose) console.log(chalk.green(`[✓] ${p.read}\r`))
+		}
+	})
+}
+
+const help = () => {
+	console.log(`Usage: hbml reverse [files]...
+
+Converts HTML files into HBML
+
+${chalk.bold(chalk.underline('Arguments:'))}
+  [files]  HTML files to turn into HBML. These can be files or directories which will be recursively traversed
+
+${chalk.bold(chalk.underline('Options:'))}
+  -o <path>
+        Output path prefix. Prefixes relative paths only
+  -v
+        Verbose output. Prints the name of the current file being converted followed by the conversion result
+  -h,--help
+        Shows this message`);
+	process.exit()
+}
 
 /**
  * HTML to HBML converter. Takes a path to the file and parses the HTML then converts it to HBML. Write the output to
  * a specified output path
- * @param file_name {string} Path to the HTML file to convert to HBML
- * @param out_file {string} Path to the output HBML file
- * @return {{err: (null|string), ok: (null|(Token|string)[])}}
+ * @param src {string} HTML to convert into HBML
+ * @return {{ok: (string|null), err: (null|string)}}
  */
-export const T2B = (file_name, out_file) => {
-	if (!fs.existsSync(file_name)) return {ok: null, err: `${file_name} does not exist`}
-	const src = fs.readFileSync(file_name).toString()
-	if (src.trim() === "") return {ok: null, err: null}
+export const reverse = (src) => {
+	if (src.trim() === "") return {ok: "", err: null}
 	let tokens = parser(src)
-	if (tokens.length === 0) return {ok: null, err: `Unable to parse ${file_name}`}
+	if (tokens.length === 0) return {ok: null, err: `Unable to parse input`}
 	const convert = (t) => {
 		if (typeof t === "string") {
 			if (/<!--(.+)-->/.test(t)) return new Token("c t", {}, {value: /<!--(.+)-->/.exec(t)[1]}, [])
@@ -60,11 +116,5 @@ export const T2B = (file_name, out_file) => {
 			]
 		}
 	}
-	fs.writeFileSync(out_file, tokens.map((t) => typeof t === "object" ? t.lint(0, false, CONFIG_DEFAULTS) : t).join(""))
-	// const doctype_index = tokens.indexOf("<!DOCTYPE html>")
-	// if (doctype_index !== -1 && typeof tokens[doctype_index + 1] === "object" && tokens[doctype_index + 1].tag === "html") {
-	// 	// check for altered lang attribute
-	// 	const lang = tokens[doctype_index + 1].attrs["lang"]
-	// 	if (lang === "en") delete tokens[doctype_index + 1].attrs["lang"]
-	// }
+	return {ok: tokens.map((t) => typeof t === "object" ? t.lint(0, false, CONFIG_DEFAULTS) : t).join(""), err: null}
 }

@@ -15,3 +15,4 @@
   - [`build`](commands/build.md)
   - [`lint`](commands/lint.md)
   - [`init`](commands/init.md)
+  - [`reverse`](commands/reverse.md)
