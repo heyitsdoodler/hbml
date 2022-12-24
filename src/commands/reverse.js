@@ -116,5 +116,6 @@ export const reverse = (src) => {
 			]
 		}
 	}
-	return {ok: tokens.map((t) => typeof t === "object" ? t.lint(0, false, CONFIG_DEFAULTS) : t).join(""), err: null}
+	const lint_opts = {...CONFIG_DEFAULTS, 'lint.config.element_preference': "arrow", 'lint.config.remove_empty': true}
+	return {ok: tokens.map((t) => typeof t === "object" ? t.lint(0, false, lint_opts) : t).join(""), err: null}
 }

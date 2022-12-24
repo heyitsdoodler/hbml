@@ -128,6 +128,19 @@ export class Token {
 	 * @return {string}
 	 */
 	lint(ident, inline, opts) {
+		// additional modifying options
+		switch (opts['lint.config.element_preference']) {
+			case "arrow":
+				if (this.children.length === 1) this.additional["inline"] = true
+				break
+			case "bracket":
+				this.additional["inline"] = false
+				break
+		}
+		if (opts['lint.config.remove_empty']) {
+			if (this.children.length === 0) this.additional["void"] = true
+		}
+
 		// indentation prefix before the line
 		let ident_str = opts['lint.config.indent.character'].repeat(inline ? 0 : ident * opts['lint.config.indent.count'])
 		// comments are handled like strings but are caught here
