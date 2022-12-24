@@ -273,7 +273,7 @@ export class Token {
 			if (typeof ok === "function") {
 				return {ok: ok(this.children), err: null}
 			}
-			if (ok.void) return {ok: this.children, err: null}
+			if (ok.void) return {ok: [...ok.rep, ...this.children], err: null}
 			else {
 				let new_children = []
 				ok.rep.map((t) => {
