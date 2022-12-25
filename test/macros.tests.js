@@ -166,6 +166,9 @@ describe("Macros", () => {
 				`<div>t1</div><div>t2</div><div>t3</div><div>t1</div><div>t2</div><div>t3</div><div>t1</div><div>t2</div><div>t3</div>`
 			)
 		})
+		it('Macros with classes applied to route', () => {
+			equal(p("--macroWith > .test1.test2\n--macroWithout > {}\n:macroWith\n:macroWith.test3.test4\n:macroWithout.test3.test4"), `<div class="test1 test2"></div><div class="test1 test2 test3 test4"></div><div class="test3 test4"></div>`)
+		})
 	})
 	describe("Sample macros", () => {
 		it("3 element list", () => {
