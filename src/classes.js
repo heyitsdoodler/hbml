@@ -358,7 +358,7 @@ export class Macro {
 				else {
 					// check if attr already exists
 					if (t.attributes[attr] !== undefined) {
-						if (typeof t.attributes[attr] === "string") t.attributes[attr] = t.attributes[attr].split(" ") + " " + attrs[attr].split(" ")
+						if (typeof t.attributes[attr] === "string") t.attributes[attr] = t.attributes[attr] + " " + attrs[attr]
 						else t.attributes[attr] = attrs[attr]
 					} else {
 						t.attributes[attr] = attrs[attr]
