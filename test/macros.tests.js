@@ -1,5 +1,5 @@
 import {strictEqual as equal, notStrictEqual as nequal} from "assert"
-import {fullStringify} from "../src/parser.js";
+import {fullStringify} from "../src/parser/parser.js";
 
 const p = (src) => {
 	const {ok, err} = fullStringify(src, "test env")

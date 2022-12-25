@@ -1,9 +1,8 @@
 import chalk from "chalk";
 import fs from "fs"
 import npath from "path"
-import {fullStringify} from "../parser.js";
+import {fullStringify} from "../parser/parser.js";
 import {getConfig} from "../config_parse.js";
-import {Parser} from "../classes.js";
 import {expand_paths, log_ep_err} from "./fs_prelude.js";
 import {DEFAULT_ALLOW} from "../constants.js";
 
