@@ -4,7 +4,8 @@
 
 import npath from "path";
 import fs from "fs";
-import {Macro, Token} from "../classes.js";
+import {Macro} from "../macro.js"
+import {Token} from "../token.js"
 import {BUILTIN_MACROS, DEFAULT_MACROS} from "../constants.js";
 
 /**

@@ -1,4 +1,4 @@
-import {Token} from "../classes.js";
+import {Token} from "../token.js";
 import {BUILTIN_MACROS, INLINE_ELEMENTS, LITERAL_DELIMITERS, UNIQUE_ATTRS, VOID_ELEMENTS} from "../constants.js";
 import chalk from "chalk";
 

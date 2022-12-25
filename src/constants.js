@@ -2,7 +2,8 @@
  * Constants used by the parser
  */
 
-import {Macro, Token} from "./classes.js";
+import {Macro} from "./macro.js"
+import {Token} from "./token.js"
 
 /**
  * Characters that delimit text

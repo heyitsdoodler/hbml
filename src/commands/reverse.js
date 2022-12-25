@@ -1,7 +1,7 @@
 import {parser} from 'posthtml-parser'
 import fs from "fs";
 import {DEFAULT_ALLOW, VOID_ELEMENTS} from "../constants.js";
-import {Token} from "../classes.js";
+import {Token} from "../token.js";
 import {CONFIG_DEFAULTS} from "../config_parse.js";
 import chalk from "chalk";
 import {expand_paths, log_ep_err} from "./fs_prelude.js";
