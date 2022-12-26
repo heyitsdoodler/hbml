@@ -16,7 +16,7 @@ import {DEFAULT_ALLOW} from "../constants.js";
 export const build_runner = (args, project) => {
 	// help flags
 	if (args["h"] !== undefined || args["help"] !== undefined) {
-		help()
+		build_help()
 	}
 	let files
 	let out
@@ -81,7 +81,7 @@ export const build_runner = (args, project) => {
  *
  * Prints help info for the build command then ends the process
  */
-const help = () => {
+const build_help = () => {
 	console.log(`Usage: hbml build {project}|([source]... [options])
 
 Builds HBML files into HTML files
