@@ -2,11 +2,10 @@
  * Any and all things relating to use with the `@import` keyword
  */
 
-import npath from "path";
-import fs from "fs";
-import {Macro} from "../macro.js"
-import {Token} from "../token.js"
-import {BUILTIN_MACROS, DEFAULT_MACROS} from "../constants.js";
+import npath from "path"
+import fs from "fs"
+import {Token, Macro, DEFAULT_MACROS} from "../token.js"
+import {BUILTIN_MACROS} from "../constants.js"
 
 /**
  * Parse and handle any `@import` statements

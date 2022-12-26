@@ -1,5 +1,4 @@
-import {Macro} from "../macro.js"
-import {Token} from "../token.js"
+import {Token, Macro} from "../token.js"
 
 /**
  * Get macro by name. Name does not include `:` before the macro call

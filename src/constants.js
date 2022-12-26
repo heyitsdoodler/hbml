@@ -2,9 +2,6 @@
  * Constants used by the parser
  */
 
-import {Macro} from "./macro.js"
-import {Token} from "./token.js"
-
 /**
  * Characters that delimit text
  */
@@ -93,7 +90,7 @@ export const INLINE_ELEMENTS = [
 ]
 
 /**
- * Attributes that can only hav e one value or appear once
+ * Attributes that can only have one value or appear once
  */
 export const UNIQUE_ATTRS = [
 	"lang",
@@ -113,21 +110,3 @@ export const BUILTIN_MACROS = [
  * @type {{parse: boolean, not_found: boolean, write: boolean}}
  */
 export const DEFAULT_ALLOW = {write: false, not_found: false, parse: false}
-
-export const DEFAULT_MACROS = {
-	"root": new Macro([
-		new Token("!DOCTYPE", {html: true}, {}, []),
-		new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
-	], false),
-	"unwrap": (c) => {
-		let out = []
-		c.forEach((t) => {
-			if (typeof t === "string") out.push(t)
-			 else {
-				 if (t.type === "c t") out.push(t)
-				else out = [...out, ...t.children]
-			}
-		})
-		return out
-	}
-}

@@ -1,4 +1,4 @@
-import {DEFAULT_MACROS} from "../constants.js";
+import {DEFAULT_MACROS} from "../token.js";
 import {Error} from "../error.js";
 import {next, remaining, st, stn, update_src} from "./util.js";
 import {convertReservedChar, parse_inner, parseAttrs, parseComment, parseStr, parseTag} from "./main.js";
