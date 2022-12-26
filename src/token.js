@@ -221,18 +221,7 @@ export class Token {
 				return {ok: ok(this.children), err: null}
 			}
 			if (ok.void) return {ok: [...ok.rep, ...this.children], err: null}
-			else {
-				let new_children = []
-				ok.rep.map((t) => {
-					if (typeof t === "string") new_children.push(t)
-					else {
-						const res = t.expand_current(p)
-						if (res.err) return {ok: null, err: res.err}
-						new_children = [...new_children, ...res.ok]
-					}}
-				)
-				return {ok: new_children, err: null}
-			}
+			else return ok.replace(this.children, this.attributes, p)
 		} else {
 			const res = this.clone(p)
 			if (res.err) return {ok: null, err: res.err}
