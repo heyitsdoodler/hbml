@@ -141,91 +141,83 @@ export class Token {
 	/**
 	 * Replace elements with macro expanded elements. Called by a macro expansion
 	 * @param elements {(Token | string)[]}
-	 * @return {{expand: (Token | string)[], rem: (Token | string)[]}}
+	 * @return {(Token | string)[]}
 	 */
 	replace(elements) {
 		switch (this.type) {
 			case ":child":
 				const child = elements.pop()
-				return {expand: [child ? child : ""], rem: elements}
+				return [child ? child : ""]
 			case ":unwrap-child":
-				return {expand: elements.at(-1)?.children ? elements.pop().children : [""], rem: elements}
+				return elements.at(-1)?.children ? elements.pop().children : [""]
 			case ":children":
-				elements.reverse()
-				return {expand: elements, rem: []}
+				const j = elements.length
+				let out = []
+				for (let i = 0; i < j; i++) out.push(elements.pop())
+				return out
 			case ":consume":
 				if (elements.length >= this.additional["child count"]) {
 					return this.children.reduce((acc, tok) => {
 						if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
-						const res = tok.replace(acc.rem)
-						return {expand: [...acc.expand, ...res.expand], rem: res.rem}
-					}, {expand: [], rem: elements})
-				} else return {expand: [], rem: elements}
+						const res = tok.replace(elements)
+						return [...acc, ...res]
+					}, [])
+				} else return []
 			case ":consume-all":
 				if (elements.length >= this.additional["child count"]) {
-					let holdover = {expand: [], rem: elements}
+					let holdover = []
 					while (elements.length >= this.additional["child count"]) {
 						holdover = this.children.reduce((acc, tok) => {
-							if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
-							const res = tok.replace(acc.rem)
-							return {expand: [...acc.expand, ...res.expand], rem: res.rem}
+							if (typeof tok === "string") return [...acc, tok]
+							const res = tok.replace(elements)
+							return [...acc, ...res]
 						}, holdover)
 					}
 					return holdover
-				} else return {expand: [], rem: elements}
+				} else return []
 			default:
 				const inner = this.children.reduce((acc, tok) => {
-					if (typeof tok === "string") return {expand: [...acc.expand, tok], rem: acc.rem}
-					const res = tok.replace(acc.rem)
-					return {expand: [...acc.expand, ...res.expand], rem: res.rem}
-				}, {expand: [], rem: elements})
-				return {expand: [new Token(this.type, this.attributes, this.additional, inner.expand)], rem: inner.rem}
+					if (typeof tok === "string") return [...acc, tok]
+					const res = tok.replace(elements)
+					return [...acc, ...res]
+				}, [])
+				return [new Token(this.type, this.attributes, this.additional, inner)]
 		}
 	}
 
 	/**
-	 * Clones a token. Required when expanding macros to ensure the returned token(s) are separate from the tokens
-	 * contained by the macro
-	 * @param p{Parser} Parser class instance calling the macro expansion
-	 * @return {{ok: Token|null, err: null|string}} Cloned token
+	 * Clones a token. Used when expanding a macro to clone the macro definition to be expanded and leave the original
+	 * definition unaltered
+	 * @param p {Parser} Parser instance
+	 * @return {{ok: (Token|string)[]|null, err: null|string}} Cloned token
 	 */
-	clone(p) {
+	expand(p) {
 		let new_children = []
 		this.children.map((t) => {
 			if (typeof t === "string") new_children.push(t)
 			else {
-				const res = t.expand_current(p)
+				const res = t.expand(p)
 				if (res.err) return {ok: null, err: res.err}
 				new_children = [...new_children, ...res.ok]
-			}}
-		)
-		return {ok: new Token(
+			}
+		})
+		if (this.type[0] === ":" && !BUILTIN_MACROS.includes(this.type)) {
+			const {ok, err} = p.get_macro(this.type.slice(1))
+			if (err) return {ok: null, err: err}
+			if (typeof ok === "function") return {ok: ok(new_children), err: null}
+			if (ok.void) {
+				const res = ok.get_rep(p)
+				if (res.err) return {ok: null, err: err}
+				return {ok: [...res.ok, ...new_children], err: null}
+			} else return ok.expand(new_children, this.attributes, p)
+		} else return {
+			ok: [new Token(
 				this.type,
 				Object.assign({}, this.attributes),
 				Object.assign({}, this.additional),
 				new_children
-			), err: null}
-	}
-
-	/**
-	 * Expand current node if it's a macro, otherwise return self
-	 * @param p{Parser} Parser calling the macro expansion
-	 * @return {{ok: (Token|string)[]|null, err: string|null}}
-	 */
-	expand_current(p) {
-		if (this.type[0] === ":" && !BUILTIN_MACROS.includes(this.type)) {
-			// try to get macro
-			const {ok, err} = p.get_macro(this.type.slice(1))
-			if (err) return {ok: null, err: err}
-			if (typeof ok === "function") {
-				return {ok: ok(this.children), err: null}
-			}
-			if (ok.void) return {ok: [...ok.rep, ...this.children], err: null}
-			else return ok.replace(this.children, this.attributes, p)
-		} else {
-			const res = this.clone(p)
-			if (res.err) return {ok: null, err: res.err}
-			return {ok: [res.ok], err: null}
+			)],
+			err: null
 		}
 	}
 }
@@ -254,23 +246,22 @@ export class Macro {
 	 * @param parser {Parser} Parser class instance calling macro expansion
 	 * @return {{ok: (Token | string)[] | null, err: (string | null)}}
 	 */
-	replace(elements, attrs, parser) {
+	expand(elements, attrs, parser) {
 		elements.reverse()
-		let rep = []
+		let child_replaced = []
 		for (let i = 0; i < this.rep.length; i++) {
-			if (typeof this.rep[i] === "string") rep.push(this.rep[i])
+			if (typeof this.rep[i] === "string") child_replaced.push(this.rep[i])
+			else child_replaced = [...child_replaced, ...this.rep[i].replace(elements)]
+		}
+		let rep = []
+		child_replaced.forEach((t) => {
+			if (typeof t === "string") rep.push(t)
 			else {
-				const res = this.rep[i].expand_current(parser)
+				const res = t.expand(parser)
 				if (res.err) return {ok: null, err: res.err}
 				else rep = [...rep, ...res.ok]
 			}
-		}
-		rep = rep.reduce((acc, child) => {
-			if (typeof child === "string") return [...acc, child]
-			const res = child.replace(elements)
-			elements = res.rem
-			return [...acc, ...res.expand]
-		}, [])
+		})
 		if (rep.length === 0) delete attrs["id"]
 		if (rep.length === 1) {
 			if (typeof rep[0] !== "string" && attrs["id"] !== undefined) {
@@ -297,8 +288,29 @@ export class Macro {
 		})
 		return {ok: rep, err: null}
 	}
+
+	get_rep = (p, elements) => {
+		let rep = []
+		this.rep.map((t) => {
+			if (typeof t === "string") rep.push(t)
+			else {
+				const {ok, err} = t.expand(p, elements)
+				if (err) return {ok: null, err: err}
+			rep = [...rep, ...ok]
+			}
+		})
+		return {ok: rep, err: null}
+	}
 }
 
+/**
+ * Default macros. These also show the two types of macro. Firstly, the `:root` macro is a class macro meaning it could
+ * be defined by the user. These are the standard macros. The `:unwrap` macro is a function macro and can only be
+ * defined internally. These macros are just functions that take one argument, macro call child elements of type
+ * `Array<Token|string>`, and return the same type. The child elements passed are already expanded. Function macros
+ * cannot return errors.
+ * @type {{root: Macro, unwrap: (function(Array<Token|string>): Array<Token|string>)}}
+ */
 export const DEFAULT_MACROS = {
 	"root": new Macro([
 		new Token("!DOCTYPE", {html: true}, {}, []),

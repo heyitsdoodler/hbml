@@ -50,7 +50,7 @@ export const parse_inner = (self, default_tag, str_replace, under_macro_def) => 
 			macro = ok
 			if (ok.void) {
 				self.update_src()
-				return self.isBuild ? {ok: ok.replace([], attrs, self).ok, err: null} : {ok: [new Token(type, attrs, additional, [])], err: null}
+				return self.isBuild ? {ok: ok.expand([], attrs, self).ok, err: null} : {ok: [new Token(type, attrs, additional, [])], err: null}
 			}
 		}
 	}
@@ -69,7 +69,7 @@ export const parse_inner = (self, default_tag, str_replace, under_macro_def) => 
 	if (!self.remaining()){
 		self.update_src()
 		if (macro === undefined) return {ok: [new Token(type, attrs, additional, [])], err: null}
-		return typeof macro === "object" ? macro.replace([], attrs) : {ok: macro([]), err: null}
+		return typeof macro === "object" ? macro.expand([], attrs, self) : {ok: macro([]), err: null}
 	}
 	// check if element has one inner or block inner
 	if (self.next() === ">") {
@@ -101,7 +101,7 @@ export const parse_inner = (self, default_tag, str_replace, under_macro_def) => 
 	self.update_src()
 
 	if (macro !== undefined && self.isBuild) {
-		if (typeof macro === "object") return macro.replace(children, attrs, self)
+		if (typeof macro === "object") return macro.expand(children, attrs, self)
 		return {ok: macro(children), err: null}
 	}
 

@@ -111,6 +111,9 @@ describe("Macros", () => {
 	it("Nested :consume and :consume-all", () => {
 		equal(p("--test > :consume { :child :consume > :child } :test { 't1' 't2' } :test > 't1'"), "t1t2t1")
 	})
+	it("Nested macro calls", () => {
+		equal(p("--m1{'words':children}--m2{'more words':m1{:child'final words'}}:m2>'middle'"), "more wordswordsmiddlefinal words")
+	})
 	it("Simple replacements", () => {
 		equal(p("--macro-string > 'Hello, world!' :macro-string"), "Hello, world!")
 		equal(p("--macro-multi-string { 'Hello,'' world!' } :macro-multi-string"), "Hello, world!")
@@ -332,20 +335,3 @@ describe("Macros", () => {
 		})
 	})
 })
-
-
-// describe("Macros", () => {
-// 	it(":child-at(<index>)", () => {
-// 		equal(p(`
-//             --index {
-//                 p > :child-at(1)
-//                 p > :child-at(0)
-//                 p > :child
-//                 p > :child-at(0)
-//                 p > :children
-//                 p > :child-at(2)
-//             }
-//             :index {"Text 1" "Text 2" "Text 3"}
-//             `), `<p>Text 2</p><p>Text 1</p><p>Text 1</p><p>Text 1</p><p>Text 2Text3</p><p>Text 3</p>`)
-// 	})
-// })
