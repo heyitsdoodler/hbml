@@ -139,7 +139,7 @@ export class Token {
 	}
 
 	/**
-	 * Replace elements with macro expanded elements. Called by a macro expansion
+	 * Replace built-in macros (`:child` etc.) with the correct elements
 	 * @param elements {(Token | string)[]}
 	 * @return {(Token | string)[]}
 	 */
@@ -186,12 +186,12 @@ export class Token {
 	}
 
 	/**
-	 * Clones a token. Used when expanding a macro to clone the macro definition to be expanded and leave the original
-	 * definition unaltered
+	 * Expands a macro with error handling
 	 * @param p {Parser} Parser instance
 	 * @return {{ok: (Token|string)[]|null, err: null|string}} Cloned token
 	 */
 	expand(p) {
+		// Get replaced children
 		let new_children = []
 		this.children.map((t) => {
 			if (typeof t === "string") new_children.push(t)
@@ -201,6 +201,7 @@ export class Token {
 				new_children = [...new_children, ...res.ok]
 			}
 		})
+		// Return a cloned token or expanded macro
 		if (this.type[0] === ":" && !BUILTIN_MACROS.includes(this.type)) {
 			const {ok, err} = p.get_macro(this.type.slice(1))
 			if (err) return {ok: null, err: err}
@@ -247,12 +248,15 @@ export class Macro {
 	 * @return {{ok: (Token | string)[] | null, err: (string | null)}}
 	 */
 	expand(elements, attrs, parser) {
+		// Reverse elements so `.pop()` return the next element, not next last
 		elements.reverse()
+		// Replace all the built-in macros (`:child` etc.) with the correct element(s)
 		let child_replaced = []
 		for (let i = 0; i < this.rep.length; i++) {
 			if (typeof this.rep[i] === "string") child_replaced.push(this.rep[i])
 			else child_replaced = [...child_replaced, ...this.rep[i].replace(elements)]
 		}
+		// Expand the macros or clone tokens for the macr definition
 		let rep = []
 		child_replaced.forEach((t) => {
 			if (typeof t === "string") rep.push(t)
@@ -262,6 +266,7 @@ export class Macro {
 				else rep = [...rep, ...res.ok]
 			}
 		})
+		// Apply attributes to the root element(s) of the expanded macro
 		if (rep.length === 0) delete attrs["id"]
 		if (rep.length === 1) {
 			if (typeof rep[0] !== "string" && attrs["id"] !== undefined) {
@@ -289,12 +294,17 @@ export class Macro {
 		return {ok: rep, err: null}
 	}
 
-	get_rep = (p, elements) => {
+	/**
+	 * Gets a clone of a macro replacement where the replacement is expanded properly
+	 * @param p {Parser} Parser instance
+	 * @return {{err: null, ok: *[]}}
+	 */
+	get_rep = (p) => {
 		let rep = []
 		this.rep.map((t) => {
 			if (typeof t === "string") rep.push(t)
 			else {
-				const {ok, err} = t.expand(p, elements)
+				const {ok, err} = t.expand(p)
 				if (err) return {ok: null, err: err}
 			rep = [...rep, ...ok]
 			}
