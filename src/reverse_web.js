@@ -7,7 +7,10 @@ const convert = (e) => {
 	let children = []
 	e.childNodes.forEach((child) => children.push(convert(child)))
 	let attrs = {}
-	for (let i = 0; i < e.attributes.length; i++) attrs[e.attributes.item(i).nodeName] = e.attributes.item(i).nodeValue
+	for (let i = 0; i < e.attributes.length; i++) {
+		let value = e.attributes.item(i).nodeValue
+		attrs[e.attributes.item(i).nodeName] = value === "" ? true : value
+	}
 	return new Token(e.localName, attrs, {}, children)
 }
 const lint_opts = {...CONFIG_DEFAULTS, 'lint.config.element_preference': "arrow", 'lint.config.remove_empty': true}
