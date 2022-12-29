@@ -2,10 +2,13 @@ import {Token} from "./token.js";
 import {CONFIG_DEFAULTS} from "./constants.js";
 
 const convert = (e) => {
-	if (e.nodeName === "#text") return e.data
+	if (e.nodeName === "#text") if (e.data.trim() === "") { return null } else return e.data
 	if (e.nodeName === "#comment") return new Token("c t", {}, {value: e.nodeValue}, [])
 	let children = []
-	e.childNodes.forEach((child) => children.push(convert(child)))
+	e.childNodes.forEach((c) => {
+		const r = convert(c)
+		if (r !== null) children.push(r)
+	})
 	let attrs = {}
 	for (let i = 0; i < e.attributes.length; i++) {
 		let value = e.attributes.item(i).nodeValue
@@ -18,7 +21,10 @@ const lint_opts = {...CONFIG_DEFAULTS, 'lint.config.element_preference': "arrow"
 export const snippet = (src) => {
 	let children = []
 	new DOMParser().parseFromString(src, "text/html")
-		.body.childNodes.forEach((c) => children.push(convert(c)))
+		.body.childNodes.forEach((c) => {
+			const r = convert(c)
+			if (r !== null) children.push(r)
+		})
 	return children.map((t) => typeof t === "object" ? t.lint(0, false, lint_opts) : t).join("")
 }
 
@@ -26,6 +32,9 @@ export const full = (src) => {
 	let children = []
 	const res = new DOMParser().parseFromString(src, "text/html")
 	const html = res.head.parentElement
-	html.childNodes.forEach((c) => children.push(convert(c)))
+	html.childNodes.forEach((c) => {
+		const r = convert(c)
+		if (r !== null) children.push(r)
+	})
 	return new Token(":root", html.lang !== "en" ? {lang: html.lang} : {}, {}, children).lint(0, false, lint_opts)
 }
