@@ -11,7 +11,7 @@ module.exports = function(grunt) {
 			build: {
 				src: [
 					'src/config_parser.js', 'src/constants.js', 'src/token.js', 'src/error.js',
-					'src/commands/reverse.js', 'src/parser/*.js'
+					'src/reverse_web.js', 'src/parser/*.js'
 				],
 				dest: 'bundle/hbml_browser.min.js'
 			}
@@ -35,7 +35,7 @@ module.exports = function(grunt) {
 					{
 						name: "exports",
 						search: 'export\{[^}]+};',
-						replace: 'export\{fullStringify,reverse\};',
+						replace: 'export\{fullStringify,snippet,full\};',
 						flags: 'g'
 					}
 				]

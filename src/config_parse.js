@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/jtd.js";
 import fs from "fs";
 import path from "path"
+import {CONFIG_DEFAULTS} from "./constants.js";
 
 /**
  * HBML.json config file schema
@@ -62,32 +63,6 @@ const flatten = (a) => Object.entries(a).reduce((q, [k, v]) => ({
 		[k + '.' + j]: i
 	}), {}) : {[k]: v})
 }), {});
-
-/**
- * Default config values
- * @type {Object}
- */
-export const CONFIG_DEFAULTS = {
-	'lint.src': ['/'],
-	'lint.output': '/',
-	'lint.allow.not_found': false,
-	'lint.allow.write': false,
-	'lint.allow.parse': false,
-	'lint.config.indent.character': '\t',
-	'lint.config.indent.count': 1,
-	'lint.config.pre_tag_space': 1,
-	'lint.config.post_tag_space': 1,
-	'lint.config.inline_same_line': true,
-	'lint.config.keep_implicit': true,
-	'lint.config.void_inline': true,
-	'lint.config.element_preference': "preserve",
-	'lint.config.remove_empty': false,
-	'build.src': ['/'],
-	'build.output': 'html',
-	'build.allow.not_found': false,
-	'build.allow.write': false,
-	'build.allow.parse': false
-}
 
 /**
  * Get the config file as an object. Looks for the config file in the current working directory

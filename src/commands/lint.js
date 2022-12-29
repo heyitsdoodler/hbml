@@ -1,4 +1,5 @@
-import {CONFIG_DEFAULTS, getConfig} from "../config_parse.js";
+import {CONFIG_DEFAULTS} from "../constants.js";
+import {getConfig} from "../config_parse.js";
 import chalk from "chalk";
 import npath from "path";
 import fs from "fs";
