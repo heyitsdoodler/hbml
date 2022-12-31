@@ -1,5 +1,5 @@
 import {strictEqual as equal, notStrictEqual as nequal} from "assert"
-import {fullStringify} from "../src/parser.js";
+import {fullStringify} from "../src/parser/parser.js";
 
 const p = (src) => {
 	const {ok, err} = fullStringify(src, "test env")
@@ -111,6 +111,9 @@ describe("Macros", () => {
 	it("Nested :consume and :consume-all", () => {
 		equal(p("--test > :consume { :child :consume > :child } :test { 't1' 't2' } :test > 't1'"), "t1t2t1")
 	})
+	it("Nested macro calls", () => {
+		equal(p("--m1{'words':children}--m2{'more words':m1{:child'final words'}}:m2>'middle'"), "more wordswordsmiddlefinal words")
+	})
 	it("Simple replacements", () => {
 		equal(p("--macro-string > 'Hello, world!' :macro-string"), "Hello, world!")
 		equal(p("--macro-multi-string { 'Hello,'' world!' } :macro-multi-string"), "Hello, world!")
@@ -156,7 +159,7 @@ describe("Macros", () => {
 		})
 	})
 	describe("Other things", () => {
-		it('Calling a macro from under another macro call', () => {
+		it('Calling a macro from under another macro call with :children', () => {
 			equal(p(`--replace { "t1" "t2" "t3" }
 				--divify > :consume-all >> :child
 				:divify > :replace
@@ -165,7 +168,87 @@ describe("Macros", () => {
 				:pass > :replace`),
 				`<div>t1</div><div>t2</div><div>t3</div><div>t1</div><div>t2</div><div>t3</div><div>t1</div><div>t2</div><div>t3</div>`
 			)
+
+			equal(p(`
+			--paragraph-me {
+				:consume-all > p > :child
+			}
+			
+			
+			--call-pm {
+				h1 > :child
+				:paragraph-me > :children
+			}
+			
+			:call-pm {
+				"Heading"
+				"Para 1"
+				"Para 2"
+				"Para 3"
+			}
+			`),
+				`<h1>Heading</h1><p>Para 1</p><p>Para 2</p><p>Para 3</p>`
+			)
 		})
+		it('Splitting single macro passed into multiple children', () => {
+			equal(p(`
+			--macro-to-be-passed {
+				"Child 1 string"
+				{"Child 2 inside implicit div"}
+			}
+			
+			--macro-to-pass-to {
+				{
+					h2 > "First child"
+					:child
+				}
+				{
+					h2 > "Second child"
+					:child
+				}
+				{
+					h3 > "Another child"
+					:child
+				}
+			}
+			
+			:macro-to-pass-to {
+				:macro-to-be-passed
+				"Additional child"
+			}
+			`),
+				`<div><h2>First child</h2>Child 1 string</div><div><h2>Second child</h2><div>Child 2 inside implicit div</div></div><div><h3>Another child</h3>Additional child</div>`
+			)
+		})
+		it('Calling a macro from under another macro with children from above macro', () => {
+			equal(p(`
+			--macro > {
+				span > "Stuff in a span"
+				:children
+			}
+			
+			--another-macro {
+				h1 > "Heading inside macro"
+			
+				:macro.macro-div {
+					{:child}
+					"defined in definition"
+					:child
+					{span > "Some other text" }
+				}
+				:children
+			}
+			:another-macro {
+				"defined outside definition 1"
+				"defined outside definition 2"   
+				> "Extra 1"
+				p > "Extra 2"
+			}
+			`),
+				`<h1>Heading inside macro</h1><div class="macro-div"><span>Stuff in a span</span><div>defined outside definition 1</div>defined in definitiondefined outside definition 2<div><span>Some other text</span></div></div><div>Extra 1</div><p>Extra 2</p>`
+			)
+		})
+
 		it('Macros with classes applied to route', () => {
 			equal(p("--macroWith > .test1.test2\n--macroWithout > {}\n:macroWith\n:macroWith.test3.test4\n:macroWithout.test3.test4"), `<div class="test1 test2"></div><div class="test1 test2 test3 test4"></div><div class="test3 test4"></div>`)
 		})
@@ -252,20 +335,3 @@ describe("Macros", () => {
 		})
 	})
 })
-
-
-// describe("Macros", () => {
-// 	it(":child-at(<index>)", () => {
-// 		equal(p(`
-//             --index {
-//                 p > :child-at(1)
-//                 p > :child-at(0)
-//                 p > :child
-//                 p > :child-at(0)
-//                 p > :children
-//                 p > :child-at(2)
-//             }
-//             :index {"Text 1" "Text 2" "Text 3"}
-//             `), `<p>Text 2</p><p>Text 1</p><p>Text 1</p><p>Text 1</p><p>Text 2Text3</p><p>Text 3</p>`)
-// 	})
-// })

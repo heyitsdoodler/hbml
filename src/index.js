@@ -10,8 +10,7 @@ import {build_runner} from "./commands/build.js";
 import {lint_runner} from "./commands/lint.js";
 import {reverse_runner, reverse} from "./commands/reverse.js";
 import {init_runner} from "./commands/init.js";
-import {fullStringify} from "./parser.js";
-import {Parser} from "./classes.js";
+import {Parser, fullStringify} from "./parser/parser.js";
 
 const project = process.argv[3] === "project"
 let args = minimist(process.argv.slice(project ? 4 : 3))

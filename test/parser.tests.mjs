@@ -1,12 +1,12 @@
 import {strictEqual as equal} from "assert"
-import {fullStringify} from "../src/parser.js";
+import {fullStringify} from "../src/parser/parser.js";
 
 const p = (src) => {
     const {ok, err} = fullStringify(src, "test env")
     return err ? err : ok
 }
 
-describe("Testing HBML: parser.js", () => {
+describe("Testing HBML parser", () => {
     describe("Strings", () => {
         it("Double quotes", () => {
             equal(p(`"Test ""string"`), "Test string")
@@ -52,6 +52,7 @@ describe("Testing HBML: parser.js", () => {
             equal(p("div {}"), "<div></div>")
             equal(p("div>p"), "<div><p></p></div>")
             equal(p("div> p"), "<div><p></p></div>")
+            equal(p("div >p"), "<div><p></p></div>")
             equal(p("div > p"), "<div><p></p></div>")
             equal(p("div{}"), "<div></div>")
             equal(p("div { }"), "<div></div>")

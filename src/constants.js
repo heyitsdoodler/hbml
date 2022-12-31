@@ -2,8 +2,6 @@
  * Constants used by the parser
  */
 
-import {Macro, Token} from "./classes.js";
-
 /**
  * Characters that delimit text
  */
@@ -92,7 +90,7 @@ export const INLINE_ELEMENTS = [
 ]
 
 /**
- * Attributes that can only hav e one value or appear once
+ * Attributes that can only have one value or appear once
  */
 export const UNIQUE_ATTRS = [
 	"lang",
@@ -113,20 +111,28 @@ export const BUILTIN_MACROS = [
  */
 export const DEFAULT_ALLOW = {write: false, not_found: false, parse: false}
 
-export const DEFAULT_MACROS = {
-	"root": new Macro([
-		new Token("!DOCTYPE", {html: true}, {}, []),
-		new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
-	], false),
-	"unwrap": (c) => {
-		let out = []
-		c.forEach((t) => {
-			if (typeof t === "string") out.push(t)
-			 else {
-				 if (t.type === "c t") out.push(t)
-				else out = [...out, ...t.children]
-			}
-		})
-		return out
-	}
+/**
+ * Default config values
+ * @type {Object}
+ */
+export const CONFIG_DEFAULTS = {
+	'lint.src': ['/'],
+	'lint.output': '/',
+	'lint.allow.not_found': false,
+	'lint.allow.write': false,
+	'lint.allow.parse': false,
+	'lint.config.indent.character': '\t',
+	'lint.config.indent.count': 1,
+	'lint.config.pre_tag_space': 1,
+	'lint.config.post_tag_space': 1,
+	'lint.config.inline_same_line': true,
+	'lint.config.keep_implicit': true,
+	'lint.config.void_inline': true,
+	'lint.config.element_preference': "preserve",
+	'lint.config.remove_empty': false,
+	'build.src': ['/'],
+	'build.output': 'html',
+	'build.allow.not_found': false,
+	'build.allow.write': false,
+	'build.allow.parse': false
 }

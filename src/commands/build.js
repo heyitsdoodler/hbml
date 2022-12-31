@@ -1,9 +1,8 @@
 import chalk from "chalk";
 import fs from "fs"
 import npath from "path"
-import {fullStringify} from "../parser.js";
+import {fullStringify} from "../parser/parser.js";
 import {getConfig} from "../config_parse.js";
-import {Parser} from "../classes.js";
 import {expand_paths, log_ep_err} from "./fs_prelude.js";
 import {DEFAULT_ALLOW} from "../constants.js";
 
@@ -17,7 +16,7 @@ import {DEFAULT_ALLOW} from "../constants.js";
 export const build_runner = (args, project) => {
 	// help flags
 	if (args["h"] !== undefined || args["help"] !== undefined) {
-		help()
+		build_help()
 	}
 	let files
 	let out
@@ -82,7 +81,7 @@ export const build_runner = (args, project) => {
  *
  * Prints help info for the build command then ends the process
  */
-const help = () => {
+const build_help = () => {
 	console.log(`Usage: hbml build {project}|([source]... [options])
 
 Builds HBML files into HTML files

@@ -1,13 +1,14 @@
-import {CONFIG_DEFAULTS, getConfig} from "../config_parse.js";
+import {CONFIG_DEFAULTS} from "../constants.js";
+import {getConfig} from "../config_parse.js";
 import chalk from "chalk";
 import npath from "path";
 import fs from "fs";
-import {Parser} from "../classes.js";
+import {Parser} from "../parser/parser.js";
 
 export const lint_runner = (args, project) => {
 	// help flags
 	if (args["h"] !== undefined || args["help"] !== undefined) {
-		help()
+		lint_help()
 	}
 	let files
 	let out
@@ -89,7 +90,7 @@ export const lint_runner = (args, project) => {
 /**
  * Prints help for the lint command then exits
  */
-const help = () => {
+const lint_help = () => {
 	console.log(`Usage: hbml lint {project}|([source]... [options])
 
 Builds HBML files into HTML files

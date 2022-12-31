@@ -1,15 +1,14 @@
-import {parser} from 'posthtml-parser'
+import {parser as HTMLparser} from 'posthtml-parser'
 import fs from "fs";
-import {DEFAULT_ALLOW, VOID_ELEMENTS} from "../constants.js";
-import {Token} from "../classes.js";
-import {CONFIG_DEFAULTS} from "../config_parse.js";
+import {DEFAULT_ALLOW, VOID_ELEMENTS, CONFIG_DEFAULTS} from "../constants.js";
+import {Token} from "../token.js";
 import chalk from "chalk";
 import {expand_paths, log_ep_err} from "./fs_prelude.js";
 import npath from "path";
 
 export const reverse_runner = (args) => {
 	if (args["h"] !== undefined || args["help"] !== undefined) {
-		help()
+		reverse_help()
 	}
 	if (args["o"] !== undefined && typeof args["o"] !== "string") {
 		console.log(chalk.red(`Too many output prefixes specified! Expected at most 1! See 'hbml build -h' for help`))
@@ -45,7 +44,7 @@ export const reverse_runner = (args) => {
 	})
 }
 
-const help = () => {
+const reverse_help = () => {
 	console.log(`Usage: hbml reverse [files]...
 
 Converts HTML files into HBML
@@ -71,7 +70,7 @@ ${chalk.bold(chalk.underline('Options:'))}
  */
 export const reverse = (src) => {
 	if (src.trim() === "") return {ok: "", err: null}
-	let tokens = parser(src)
+	let tokens = HTMLparser(src)
 	if (tokens.length === 0) return {ok: null, err: `Unable to parse input`}
 	const convert = (t) => {
 		if (typeof t === "string") {

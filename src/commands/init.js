@@ -4,7 +4,7 @@ import npath from "path";
 
 export const init_runner = (args) => {
 	if (args["h"] !== undefined || args["help"] !== undefined) {
-		help()
+		init_help()
 	}
 	if (args["_"] !== undefined || args["_"].length > 1) {
 		console.log(chalk.red(`Too many arguments provided! Expected at most 1! See 'hbml lint -h' for help`))
@@ -37,7 +37,7 @@ const init = (path) => {
 	if (!fs.existsSync(npath.join(path, "hbml"))) fs.mkdirSync(npath.join(path, "hbml"))
 }
 
-const help = () => {
+const init_help = () => {
 	console.log(`Usage: hbml init ([project dir])
 
 Initialises a HBML project in a directory
