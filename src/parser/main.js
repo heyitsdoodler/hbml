@@ -32,8 +32,9 @@ export const parse_inner = (self, default_tag, str_replace, under_macro_def) => 
 		if (res.err) return {ok: null, err: res.err}
 		return {ok: [res.ok], err: null}
 	}
-	// check for import statement
+	// check for @ commands
 	if (self.src.startsWith("@import", self.index)) return self.handleImport()
+	if (self.src.startsWith("@insert", self.index)) return self.handleInsert()
 	// get tag
 	let tag_res = self.parseTag(default_tag)
 	if (tag_res.err) return {ok: null, err: tag_res.err}

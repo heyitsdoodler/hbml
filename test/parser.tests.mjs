@@ -110,7 +110,23 @@ describe("Testing HBML parser", () => {
             equal(p("section"), "<section></section>")
         })
     })
-    // All test below this point require macros to be functioning, they may also need corrections due to being quickly hand parsed
+    describe("@insert", () => {
+        describe('HBML file', () => {
+            it('In root', () => {
+                equal(p('@insert test/insert_test.hbml :test'), '<div id="check">Other words</div>Hello, world!')
+            })
+            it('Shadowing', () => {
+                equal(p('--test > "Blank" { @insert test/insert_test.hbml :test } :test'), '<div><div id="check">Other words</div>Hello, world!</div>Blank')
+            })
+            it('Redefinition', () => {
+                equal(p('--test > "Blank" :test @insert test/insert_test.hbml :test'), 'Blank<div id="check">Other words</div>Hello, world!')
+            })
+        })
+        it("Text file", () => {
+            equal(p('@insert test/raw_text.txt'), 'Voluptates fugit ut temporibus odit sint.')
+            equal(p('> @insert test/raw_text.txt'), '<div>Voluptates fugit ut temporibus odit sint.</div>')
+        })
+    })
     describe('Full Pages', () => {
         it("Small", () => {
             equal(p(`:root[lang=en] {

@@ -1,5 +1,5 @@
 /**
- * Any and all things relating to use with the `@import` keyword
+ * Commands starting with `@`
  */
 
 import npath from "path"
@@ -92,4 +92,48 @@ export const import_parse = (self, prefix) => {
 		prefixed_out[`${prefix}${outKey}`] = new Macro(out[outKey].rep.map((t) => updateMacroCall(t)), out[outKey].void)
 	}
 	return {ok: prefixed_out, err: null}
+}
+
+/**
+ * Parse and handle any `@insert` statements
+ * @param self {Parser} Parser instance
+ * @return {{ok: Array<Token|string>|null, err: null|string}}
+ */
+export const handleInsert = (self) => {
+	self.index += 7
+	self.st()
+	let path = ""
+	while (self.remaining()) {
+		if (" \t\n".includes(self.next())) break
+		path += self.next()
+		self.index++
+		self.col++
+	}
+	self.update_src()
+	let src
+	// find the file
+	if (path.startsWith("http")) {
+		let req = new XMLHttpRequest()
+		req.open("GET", path, false)
+		req.send(null)
+		if (req.status !== 200) return {ok: null, err: `Unable to access ${path} (response ${req.status} '${req.responseText}')`}
+		src = req.responseText
+	} else {
+		path = npath.join(npath.isAbsolute(path) ? "" : process.cwd(), path)
+		if (!fs.existsSync(path)) return {ok: null, err: `Inserted file ${path} does not exist`}
+		switch (npath.extname(path)) {
+			case ".hbml":
+				src = fs.readFileSync(path).toString()
+				break
+			default:
+				src = '`' + fs.readFileSync(path).toString().replace('`', '\\`') + '`'
+		}
+	}
+	const inner_parser = self.new(src, path, true)
+	const {ok, err} = inner_parser.parse()
+	if (err !== null) return {ok: null, err: `Error importing file ${path} (${err.toString()})`}
+	const macros = Object.assign({}, inner_parser.macros[0])
+	Object.keys(DEFAULT_MACROS).forEach((k) => delete macros[k])
+	self.macros[self.macros.length - 1] = {...self.macros[self.macros.length - 1], ...macros}
+	return {ok: ok, err: null}
 }

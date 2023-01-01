@@ -2,7 +2,7 @@ import {DEFAULT_MACROS} from "../token.js";
 import {Error} from "../error.js";
 import {next, remaining, st, stn, update_src} from "./util.js";
 import {convertReservedChar, parse_inner, parseAttrs, parseComment, parseStr, parseTag} from "./main.js";
-import {handleImport, import_parse} from "./imports.js";
+import {handleImport, import_parse, handleInsert} from "./at-commands.js";
 import {get_macro, parse_macro_def} from "./macros.js";
 
 /**
@@ -77,6 +77,7 @@ export class Parser {
 	parse_inner = (default_tag, str_replace, under_macro_def) => { return parse_inner(this, default_tag, str_replace, under_macro_def)}
 	import_parse = (prefix) => { return import_parse(this, prefix) }
 	handleImport = () => { return handleImport(this) }
+	handleInsert = () => { return handleInsert(this) }
 	convertReservedChar = (input) => { return convertReservedChar(this, input) }
 	parseComment = () => { return parseComment(this) }
 	parseStr = (delim, convert) => { return parseStr(this, delim, convert) }
