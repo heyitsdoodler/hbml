@@ -193,14 +193,14 @@ export class Token {
 	expand(p) {
 		// Get replaced children
 		let new_children = []
-		this.children.map((t) => {
-			if (typeof t === "string") new_children.push(t)
+		for (let i = 0; i < this.children.length; i++) {
+			if (typeof this.children[i] === "string") new_children.push(this.children[i])
 			else {
-				const res = t.expand(p)
+				const res = this.children[i].expand(p)
 				if (res.err) return {ok: null, err: res.err}
 				new_children = [...new_children, ...res.ok]
 			}
-		})
+		}
 		// Return a cloned token or expanded macro
 		if (this.type[0] === ":" && !BUILTIN_MACROS.includes(this.type)) {
 			const {ok, err} = p.get_macro(this.type.slice(1))
@@ -232,11 +232,15 @@ export class Macro {
 	/**
 	 * @param rep {(Token|string)[]} Replacement object array
 	 * @param isVoid {boolean} Does the macro accept child elements
+	 * @param name {string} Macro name
+	 * @param def {{file: string, line: number, col: number}}
 	 * @return {Macro}
 	 */
-	constructor(rep, isVoid) {
+	constructor(rep, isVoid, name, def) {
 		this.rep = rep
 		this.void = isVoid
+		this.name = name
+		this.def = def
 		return this
 	}
 
@@ -258,14 +262,14 @@ export class Macro {
 		}
 		// Expand the macros or clone tokens for the macr definition
 		let rep = []
-		child_replaced.forEach((t) => {
-			if (typeof t === "string") rep.push(t)
+		for (let i = 0; i < child_replaced.length; i++) {
+			if (typeof child_replaced[i] === "string") rep.push(child_replaced[i])
 			else {
-				const res = t.expand(parser)
-				if (res.err) return {ok: null, err: res.err}
+				const res = child_replaced[i].expand(parser)
+				if (res.err) return {ok: null, err: `${res.err}\n\tunder macro call :${this.name}(${this.def.file} ${this.def.line}:${this.def.col})`}
 				else rep = [...rep, ...res.ok]
 			}
-		})
+		}
 		// Apply attributes to the root element(s) of the expanded macro
 		if (rep.length === 0) delete attrs["id"]
 		if (rep.length === 1) {
@@ -325,7 +329,7 @@ export const DEFAULT_MACROS = {
 	"root": new Macro([
 		new Token("!DOCTYPE", {html: true}, {}, []),
 		new Token("html", {lang: "en"}, {"child count": 0, "children": true}, [new Token(":children", {}, {}, [])])
-	], false),
+	], false, "root", {file: "Built-in", col: 0, line: 0}),
 	"unwrap": (c) => {
 		let out = []
 		c.forEach((t) => {

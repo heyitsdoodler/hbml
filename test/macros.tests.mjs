@@ -112,7 +112,7 @@ describe("Macros", () => {
 		equal(p("--test > :consume { :child :consume > :child } :test { 't1' 't2' } :test > 't1'"), "t1t2t1")
 	})
 	it("Nested macro calls", () => {
-		equal(p("--m1{'words':children}--m2{'more words':m1{:child'final words'}}:m2>'middle'"), "more wordswordsmiddlefinal words")
+		equal(p("--m1{'words ':children}--m2{'more words ':m1{:child 'final words'}}:m2>'middle '"), "more words words middle final words")
 	})
 	it("Simple replacements", () => {
 		equal(p("--macro-string > 'Hello, world!' :macro-string"), "Hello, world!")

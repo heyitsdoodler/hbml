@@ -89,7 +89,7 @@ export const import_parse = (self, prefix) => {
 	}
 	let prefixed_out = {}
 	for (const outKey in out) {
-		prefixed_out[`${prefix}${outKey}`] = new Macro(out[outKey].rep.map((t) => updateMacroCall(t)), out[outKey].void)
+		prefixed_out[`${prefix}${outKey}`] = new Macro(out[outKey].rep.map((t) => updateMacroCall(t)), out[outKey].void, `${prefix}${outKey}`, {file: self.path, col: self.col, line: self.ln})
 	}
 	return {ok: prefixed_out, err: null}
 }
