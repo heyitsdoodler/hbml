@@ -66,4 +66,4 @@ Implicit tags are either `div`s or `span`s depending on the parent element type 
 
 Strings in HBML can use one of three delimiters `'`, `"`, or <code>\`</code>. If you use the `'` or `"` delimiter, newlines won't be included in the resulting string, but using <code>\`</code> will include newlines.
 
-Strings are also put through a substitution process to turn characters that might cause problems in HTML into their HTML codes such as `<` being replaced with `&lt;` 
+Strings are also put through a substitution process to turn characters that might cause problems in HTML into their HTML codes such as `<` being replaced with <code>&amp;lt</code>
