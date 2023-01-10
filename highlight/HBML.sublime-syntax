@@ -1,0 +1,119 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/syntax.html
+file_extensions:
+  - hbml
+scope: source.hbml
+verion: 2
+first_line_match: '(:root)|(@import[ ]+[^\s]+([ ]+[^\.#\[\{>}]"`\s]+)?)'
+variables:
+  tag: "[^#\\. \\t\\n\"'`/>\\{\\[\\}\\]]+"
+contexts:
+  main:
+    - include: strings
+    - match: "(@import) +([^ \\t\\n]+) +({{tag}})"
+      captures:
+        1: keyword.control.import.hbml
+        2: support.constant.hbml
+        3: entity.name.namespace.hbml
+    - match: '(@import) +([^\s]+)'
+      captures:
+        1: keyword.control.import.hbml
+        2: support.constant.hbml
+    - match: '(@insert) +([^\s]+)'
+      captures:
+        1: keyword.control.import.hbml
+        2: support.constant.hbml
+
+    - match: '//'
+      scope: punctuation.definition.comment.hbml
+      push:
+        - meta_scope: comment.line.hbml
+        - match: $
+          pop: true
+
+    - match: '/\*'
+      scope: punctuation.definition.comment.hbml
+      push:
+        - meta_scope: comment.block.hbml
+        - match: '\*/'
+          scope: punctuation.definition.comment.hbml
+          pop: true
+
+    - match: '\-\-{{tag}}'
+      scope: entity.name.function.constructor.hbml
+
+    - match: ':?{{tag}}'
+      scope: entity.name.tag.hbml
+    - include: id
+    - include: classes
+    - match: '\['
+      scope: punctuation.section.brackets.begin.hbml
+      push: attributes
+
+  strings:
+    - match: '"'
+      scope: punctuation.definition.string.begin.hbml
+      push:
+        - meta_scope: string.quoted.hbml
+        - match: '\\.'
+          scope: constant.character.escape.hbml
+        - match: '"'
+          scope: punctuation.definition.string.end.hbml
+          pop: true
+    - match: "'"
+      scope: punctuation.definition.string.begin.hbml
+      push:
+        - meta_scope: string.quoted.hbml
+        - match: '\\.'
+          scope: constant.character.escape.hbml
+        - match: "'"
+          scope: punctuation.definition.string.end.hbml
+          pop: true
+    - match: '`'
+      scope: punctuation.definition.string.begin.hbml
+      push:
+        - meta_scope: string.quoted.hbml
+        - match: '\\.'
+          scope: constant.character.escape.hbml
+        - match: '`'
+          scope: punctuation.definition.string.end.hbml
+          pop: true
+  
+  id:
+    - match: '(#)({{tag}})'
+      captures:
+        1: source.hbml
+        2: entity.name.tag.hbml
+      push: classes
+    - include: classes
+
+  classes:
+    - match: '(\.)({{tag}})'
+      captures:
+        1: source.hbml
+        2: entity.name.tag.hbml
+    - match: ' *\['
+      scope: punctuation.section.brackets.begin.hbml
+      pop: true
+      push: attributes
+    - match: ' '
+      pop: true
+
+  attributes:
+    - match: '\]'
+      scope: punctuation.section.brackets.end.hbml
+      pop: true
+    - match: "[^\\s\\t\\n'\"`=]+"
+      scope: entity.other.attribute-name
+      push:
+        - match: '\s*=\s*'
+          pop: true
+          push:
+            - include: strings
+            - match: '[ \]]'
+              pop: true
+            - match: '[^ \t\n\]]+'
+              scope: string.hbml
+              pop: true
+

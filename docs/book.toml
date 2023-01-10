@@ -6,3 +6,4 @@ language = "en"
 [output.html]
 [output.compress]
 subtitle = "How to use HBML from simple markdown to complex macros"
+highlight = "no-node"
