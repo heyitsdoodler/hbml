@@ -4,6 +4,7 @@ import chalk from "chalk";
 import npath from "path";
 import fs from "fs";
 import {Parser} from "../parser/parser.js";
+import {expand_paths} from "./fs_prelude.js";
 
 export const lint_runner = (args, project) => {
 	// help flags
@@ -27,7 +28,7 @@ export const lint_runner = (args, project) => {
 	} else {
 		// get files to build
 		files = args["_"];
-		if (files === []) {
+		if (files === undefined) {
 			files = ["."]
 		}
 		delete args["_"]
@@ -124,44 +125,23 @@ ${chalk.bold(chalk.underline('Options:'))}
  */
 const lint_internal = (paths, output, allow, lint_opts) => {
 	console.log("Linting HTML files...")
-	let filtered = []
-	const cwd = process.cwd();
-	paths.forEach((path) => {
-		const read = npath.normalize(`${npath.isAbsolute(path) ? "" : cwd}/${path}`);
-		const write = npath.normalize(`${npath.isAbsolute(path) ? "" : cwd + "/" + output}/${path}`);
-		// check if path is a file or directory
-		if (!fs.existsSync(read)) {
-			if (allow.not_found) {
-				console.log(chalk.yellow(`Unable to read ${path}! Skipping over it`))
-			} else {
-				console.log(chalk.red(`Unable to read file ${path}! Stopping!\nTo skip over missing files, pass the -s=not_found flag`))
-				process.exit(1)
-			}
-		} else {
-			const type = fs.lstatSync(path).isDirectory() ? "dir" : "file";
-			if (type === "file" && !path.endsWith(".hbml")) {
-				console.log(chalk.yellow(`Cannot lint non-HBML files into HTML (${path})`));
-			}
-			filtered.push({read: read, write: write, type: type})
-		}
-	})
-	while (true) {
-		const path = filtered.pop()
-		if (path === undefined) {
-			break
-		}
-		if (path.type === "file") {
-			lint_file(path, allow, lint_opts)
-		} else {
-			fs.readdirSync(path.read).forEach((subpath) => {
-				const read = npath.join(path.write, subpath)
-				let write = npath.join(path.write, subpath)
-				const type = fs.lstatSync(read).isDirectory() ? "dir" : "file"
-				if ((type === "file" && read.endsWith(".hbml")) || type === "dir") {
-					filtered.push({read: read, write: write, type: type})
-				}
+	const {ok, err} = expand_paths(paths, output, ".hbml", ".hbml")
+	if (err.length > 0) {
+		if (allow.not_found) {
+			console.log(chalk.yellow(`Error${err.length === 0 ? "s" : ""} expanding given paths:`))
+			err.forEach((t) => {
+				console.log(chalk.yellow(`\t${t.path}: ${t.type}`))
 			})
+		} else {
+			console.log(chalk.red(`Stopping due to error${err.length === 0 ? "s" : ""} expanding given paths(To skip over missing files, pass the -s=not_found flag):`))
+			err.forEach((t) => {
+				console.log(chalk.red(`\t${t.path}: ${t.type}`))
+			})
+			return
 		}
+	}
+	for (let i = 0; i < ok.length; i++) {
+		if (!lint_file(ok[i], allow, lint_opts)) break
 	}
 	console.log(`Finished linting HBML files`)
 }
@@ -171,6 +151,7 @@ const lint_internal = (paths, output, allow, lint_opts) => {
  * @param path{Object} Path to file
  * @param allow{Object} Allow options
  * @param opts{Object} Lint options
+ * @return {boolean}
  */
 const lint_file = (path, allow, opts) => {
 	const res = new Parser(fs.readFileSync(path.read).toString(), path.read, false).parse()
@@ -179,19 +160,22 @@ const lint_file = (path, allow, opts) => {
 			console.log(chalk.yellow(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Skipping over file`))
 		} else {
 			console.log(chalk.red(`Unable to parse file ${path.read} ${res.err.ln}:${res.err.col}(${res.err.desc})! Stopping!\nTo skip over incorrectly formatted files, pass the -s=parse flag`))
-			process.exit(1)
+			return false
 		}
-		return
+		return true
 	}
 	const out = res.ok.map((t) => typeof t === "object" ? t.lint(0, false, opts) : t).join("\n")
-	fs.writeFile(path.write, out, (write_err) => {
-		if (write_err) {
-			if (allow.write) {
-				console.log(chalk.yellow(`Unable to write file ${path.write}! Skipping over file`))
-			} else {
-				console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
-				process.exit(1)
-			}
+	if (!fs.existsSync(npath.dirname(path.write))) {
+		fs.mkdirSync(npath.dirname(path.write), {recursive: true})
+	}
+	try { fs.writeFileSync(path.write, out) }
+	catch (e) {
+		if (allow.write) {
+			console.log(chalk.yellow(`Unable to write file ${path.write} (${e})! Skipping over file`))
+		} else {
+			console.log(chalk.red(`Unable to write file ${path.write} (${e})! Stopping!\nTo skip over write errors, pass the -s=write flag`))
+			return false
 		}
-	})
+	}
+	return true
 }

@@ -114,9 +114,9 @@ const build_internal = (paths, output, allow) => {
 	console.log("Building HTML files...")
 	const path_res = expand_paths(paths, output)
 	if (path_res.err.length > 0) log_ep_err(path_res.err, allow)
-	path_res.ok.map((p) => {
-		parse_file(p, allow)
-	})
+	for (let i = 0; i < path_res.ok.length; i++) {
+		if (!parse_file(path_res.ok[i], allow)) break
+	}
 	console.log(`Finished building HBML files`)
 }
 
@@ -126,6 +126,7 @@ const build_internal = (paths, output, allow) => {
  * Takes path object and builds it into a HTML file
  * @param path {{read: string, write: string}} Path object
  * @param allow {Object} Allow arguments
+ * @return {boolean}
  */
 const parse_file = (path, allow) => {
 	path.write = `${path.write.slice(0, path.write.length - 5)}.html`
@@ -137,22 +138,20 @@ const parse_file = (path, allow) => {
 			console.log(chalk.red(`Unable to parse file ${path.write} ${err.ln}:${err.col}(${err.desc})! Stopping!\nTo skip over parsing errors, pass the -s=parse flag`))
 			process.exit(1)
 		}
-		return
+		return false
 	}
 	if (!fs.existsSync(npath.dirname(path.write))) {
 		fs.mkdirSync(npath.dirname(path.write), {recursive: true})
 	}
-	fs.writeFile(
-		path.write, ok,
-		(e) => {
-			if (e) {
-				if (allow.write) {
-					console.log(chalk.yellow(`Unable to write file ${path.write}! Skipping over file`))
-				} else {
-					console.log(chalk.red(`Unable to write file ${path.write}! Stopping!\nTo skip over write errors, pass the -s=write flag`))
-					process.exit(1)
-				}
-			}
+	try {
+		fs.writeFileSync(path.write, ok)
+	} catch (e) {
+		if (allow.write) {
+			console.log(chalk.yellow(`Unable to write file ${path.write} (${e})! Skipping over file`))
+		} else {
+			console.log(chalk.red(`Unable to write file ${path.write} (${e})! Stopping!\nTo skip over write errors, pass the -s=write flag`))
+			return false
 		}
-	)
+	}
+	return true
 }

@@ -48,7 +48,7 @@ contexts:
     - include: id
     - include: classes
     - match: '\['
-      scope: punctuation.section.brackets.begin.hbml
+      scope: punctuation.section.brackets.hbml
       push: attributes
 
   strings:
@@ -79,7 +79,7 @@ contexts:
         - match: '`'
           scope: punctuation.definition.string.end.hbml
           pop: true
-  
+
   id:
     - match: '(#)({{tag}})'
       captures:
@@ -94,7 +94,7 @@ contexts:
         1: source.hbml
         2: entity.name.tag.hbml
     - match: ' *\['
-      scope: punctuation.section.brackets.begin.hbml
+      scope: punctuation.section.brackets.hbml
       pop: true
       push: attributes
     - match: ' '
@@ -102,7 +102,7 @@ contexts:
 
   attributes:
     - match: '\]'
-      scope: punctuation.section.brackets.end.hbml
+      scope: punctuation.section.brackets.hbml
       pop: true
     - match: "[^\\s\\t\\n'\"`=]+"
       scope: entity.other.attribute-name
@@ -116,4 +116,3 @@ contexts:
             - match: '[^ \t\n\]]+'
               scope: string.hbml
               pop: true
-

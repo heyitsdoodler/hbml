@@ -41,13 +41,7 @@ Tag attributes are placed inside square brackets and use the standard style. For
 
 Any attribute can be a _unique attribute_. This means that if duplicates of the attribute are found, then the last one is used. If a duplicated attribute is not unique, then the values are placed together with a space separating them. For example, `lang` is a unique attribute so `html[lang="en" lang="de"]` would turn into `<html lang="de">`; but `class` is not a unique attribute so `p.lead[class="bold"]` or `p[class="bold" class="lead"]` would both become `<p class="lead bold">`.
 
-You can override the default unique attributes by adding or removing attributes like this:
-```hbml
-/* Make the 'class' attribute unique */
-:unique +class
-/* Make the 'lang' attribute not unique */
-:unique -lang
-```
+In the future, you'll be able to specify if you want to add or remove unique attributes in a project in the project config file. The default unique attributes are `lang` and `id`.
 
 Attributes are placed after classes and are optional.
 
