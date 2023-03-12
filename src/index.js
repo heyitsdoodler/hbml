@@ -3,8 +3,10 @@
 import chalk from "chalk";
 import minimist from "minimist"
 import fs from "fs";
+import path from "path";
+import {fileURLToPath} from 'url';
 
-const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
+const version = JSON.parse(fs.readFileSync(path.join(fileURLToPath(import.meta.url), "..", "..", "package.json"), 'utf8')).version
 
 import {build_runner} from "./commands/build.js";
 import {lint_runner} from "./commands/lint.js";

@@ -11,7 +11,8 @@
     "src/error.js",
     "src/token.js",
     "src/parser",
-    "src/commands/"
+    "src/commands/",
+    "package.json"
   ],
   "dependencies": {
     "ajv": "8.11.2",
